@@ -16,6 +16,23 @@ export function hasDemoSession(value) {
   return value === SESSION_VALUE
 }
 
+export function buildDemoRedirectUrl(request, pathname) {
+  const url = new URL(pathname, request.url)
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0].trim()
+  const host = forwardedHost || request.headers.get('host')
+  const forwardedProtocol = request.headers.get('x-forwarded-proto')?.split(',')[0].trim()
+
+  if (host) {
+    url.host = host
+  }
+
+  if (forwardedProtocol === 'http' || forwardedProtocol === 'https') {
+    url.protocol = `${forwardedProtocol}:`
+  }
+
+  return url.toString()
+}
+
 export function demoCookieOptions() {
   return {
     httpOnly: true,

@@ -5,6 +5,7 @@ import {
   DEMO_PASSWORD,
   SESSION_COOKIE,
   SESSION_VALUE,
+  buildDemoRedirectUrl,
   demoCookieOptions,
   hasDemoSession,
   validateDemoCredentials,
@@ -31,4 +32,15 @@ test('uses constrained cookie options', () => {
   assert.equal(options.sameSite, 'lax')
   assert.equal(options.path, '/')
   assert.equal(options.maxAge, 60 * 60 * 8)
+})
+
+test('builds redirects from the incoming public host', () => {
+  const request = new globalThis.Request('http://localhost:3000/api/demo-auth/login', {
+    headers: {
+      host: '127.0.0.1:3000',
+      'x-forwarded-proto': 'http',
+    },
+  })
+
+  assert.equal(buildDemoRedirectUrl(request, '/'), 'http://127.0.0.1:3000/')
 })

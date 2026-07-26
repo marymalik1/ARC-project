@@ -34,10 +34,12 @@ export default function Sidebar({ activePage = 'users', open, onClose }) {
           ))}
         </nav>
         <div className="sidebar-divider" />
-        <a className="nav-item logout-link" href="#logout">
-          <LogOut aria-hidden="true" />
-          <span>Logout</span>
-        </a>
+        <form className="logout-form" action="/api/demo-auth/logout" method="post">
+          <button className="nav-item logout-link" type="submit">
+            <LogOut aria-hidden="true" />
+            <span>Logout</span>
+          </button>
+        </form>
         <footer className="sidebar-footer">
           <span>© 2025 ARC</span>
           <span>All rights reserved.</span>

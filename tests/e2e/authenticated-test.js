@@ -1,7 +1,7 @@
 import { expect, test as base } from '@playwright/test'
 
 const test = base.extend({
-  page: async ({ context, page }, use) => {
+  page: async ({ context, page }, run) => {
     await context.addCookies([{
       name: 'arc_demo_session',
       value: 'authenticated',
@@ -9,7 +9,7 @@ const test = base.extend({
       httpOnly: true,
       sameSite: 'Lax',
     }])
-    await use(page)
+    await run(page)
   },
 })
 

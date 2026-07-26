@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import {
   SESSION_COOKIE,
   SESSION_VALUE,
+  buildDemoRedirectUrl,
   demoCookieOptions,
   validateDemoCredentials,
 } from '../../../../lib/demo-auth'
@@ -14,18 +15,18 @@ export async function POST(request) {
     const password = form.get('password')
 
     if (!validateDemoCredentials(email, password)) {
-      return NextResponse.redirect(new URL('/login?error=invalid', request.url), {
+      return NextResponse.redirect(buildDemoRedirectUrl(request, '/login?error=invalid'), {
         status: 303,
       })
     }
 
-    const response = NextResponse.redirect(new URL('/', request.url), {
+    const response = NextResponse.redirect(buildDemoRedirectUrl(request, '/'), {
       status: 303,
     })
     response.cookies.set(SESSION_COOKIE, SESSION_VALUE, demoCookieOptions())
     return response
   } catch {
-    return NextResponse.redirect(new URL('/login?error=unavailable', request.url), {
+    return NextResponse.redirect(buildDemoRedirectUrl(request, '/login?error=unavailable'), {
       status: 303,
     })
   }

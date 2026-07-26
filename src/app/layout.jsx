@@ -1,5 +1,6 @@
 import './globals.css'
 import './mobile.css'
+import './login.css'
 
 export const metadata = {
   title: 'ARC Administration',
