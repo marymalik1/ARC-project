@@ -196,3 +196,230 @@
     grid-column: 1 / -1;
   }
 }
+
+/* Customer care responsive reference layout */
+@media (max-width: 1280px) {
+  .support-filters {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .support-filter-field {
+    grid-column: span 2;
+  }
+
+  .support-filter-actions {
+    grid-column: span 6;
+  }
+
+  .support-workspace {
+    grid-template-columns: minmax(290px, 0.88fr) minmax(470px, 1.5fr);
+  }
+
+  .ticket-details-rail {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .customer-care-shell .main-shell {
+    margin-left: 0;
+  }
+
+  .support-filters {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .support-filter-field {
+    grid-column: span 2;
+  }
+
+  .support-filter-actions {
+    grid-column: span 4;
+    justify-content: stretch;
+  }
+
+  .support-filter-actions button,
+  .support-filter-actions a {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .support-workspace {
+    grid-template-columns: minmax(280px, 0.82fr) minmax(430px, 1.18fr);
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .customer-care-content {
+    padding: 18px 14px 28px;
+  }
+
+  .customer-care-heading {
+    padding-left: 0;
+  }
+
+  .customer-care-heading h1 {
+    font-size: 30px;
+  }
+
+  .support-filters {
+    margin-top: 18px;
+    padding: 18px 14px;
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .support-filter-field,
+  .support-filter-actions {
+    grid-column: 1;
+  }
+
+  .support-filter-field input,
+  .support-filter-field select {
+    min-height: 48px;
+  }
+
+  .support-filter-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .support-filter-actions button,
+  .support-filter-actions a {
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+  }
+
+  .support-filter-actions .filter-search-button {
+    grid-row: 1;
+    grid-column: 1 / -1;
+  }
+
+  .support-workspace,
+  .ticket-details-rail {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    overflow: visible;
+  }
+
+  .chat-inbox,
+  .conversation-panel,
+  .ticket-details-rail {
+    min-width: 0;
+  }
+
+  .chat-inbox {
+    min-height: 720px;
+  }
+
+  .conversation-panel {
+    min-height: 680px;
+  }
+
+  .conversation-header {
+    align-items: flex-start;
+    flex-direction: row;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .conversation-heading-copy h2 {
+    white-space: normal;
+  }
+
+  .conversation-header-actions {
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .conversation-body {
+    padding: 18px 16px 22px;
+  }
+
+  .message-content {
+    max-width: 84%;
+  }
+
+  .message-bubble {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .message-composer {
+    margin-inline: 12px;
+  }
+
+  .customer-summary span,
+  .customer-details-body > a,
+  .ticket-detail-list dd {
+    overflow-wrap: anywhere;
+  }
+
+  .ticket-action-list button {
+    min-height: 48px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chat-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .chat-tab {
+    padding-inline: 3px;
+    font-size: 12px;
+  }
+
+  .ticket-item {
+    padding-inline: 16px 12px;
+  }
+
+  .conversation-header {
+    flex-direction: column;
+  }
+
+  .conversation-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .tag-button {
+    min-width: 100px;
+  }
+
+  .tag-menu {
+    right: auto;
+    left: 0;
+  }
+
+  .message-composer {
+    min-height: 116px;
+    grid-template-columns: 40px 40px minmax(0, 1fr);
+    grid-template-rows: 48px 48px;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .message-composer > button:not(.send-button) {
+    width: 40px;
+    height: 40px;
+  }
+
+  .message-composer input {
+    min-width: 0;
+    padding-inline: 8px;
+  }
+
+  .send-button {
+    width: 100%;
+    height: 48px;
+    grid-column: 1 / -1;
+  }
+}
