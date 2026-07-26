@@ -22,6 +22,54 @@ test('reflows User Management into labeled dealer cards', async ({ page }) => {
   expect(metrics.documentWidth).toBeLessThanOrEqual(metrics.viewportWidth)
   expect(metrics.rowWidth).toBeLessThanOrEqual(metrics.viewportWidth - 32)
 
-  await page.getByRole('button', { name: 'Edit Ali Traders' }).click()
+  const editButton = page.getByRole('button', { name: 'Edit Ali Traders' })
+  const editButtonBox = await editButton.boundingBox()
+  expect(editButtonBox.height).toBeGreaterThanOrEqual(40)
+
+  await editButton.click()
   await expect(page.getByRole('heading', { name: 'Edit Account' })).toBeVisible()
+})
+
+test('stacks Customer Care panels and header actions on mobile', async ({ page }) => {
+  await page.goto('/customer-care')
+
+  const layout = await page.evaluate(() => {
+    const panelTops = [
+      '.ticket-list-panel',
+      '.conversation-panel',
+      '.ticket-details-rail',
+    ].map((selector) => Math.round(document.querySelector(selector).getBoundingClientRect().top))
+    const identity = document.querySelector('.conversation-header > div').getBoundingClientRect()
+    const actions = document.querySelector('.conversation-header-actions').getBoundingClientRect()
+
+    return {
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth,
+      panelTops,
+      actionsBelowIdentity: actions.top >= identity.bottom,
+    }
+  })
+
+  expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth)
+  expect(layout.panelTops[0]).toBeLessThan(layout.panelTops[1])
+  expect(layout.panelTops[1]).toBeLessThan(layout.panelTops[2])
+  expect(layout.actionsBelowIdentity).toBeTruthy()
+})
+
+test('gives the Customer Care send action a full-width mobile row', async ({ page }) => {
+  await page.goto('/customer-care')
+
+  const composer = page.locator('.message-composer')
+  const conversation = page.locator('.conversation-panel')
+  const send = page.getByRole('button', { name: 'Send' })
+  const [composerBox, conversationBox, sendBox] = await Promise.all([
+    composer.boundingBox(),
+    conversation.boundingBox(),
+    send.boundingBox(),
+  ])
+
+  expect(sendBox.width).toBeGreaterThanOrEqual(composerBox.width - 32)
+  expect(sendBox.y + sendBox.height).toBeLessThanOrEqual(conversationBox.y + conversationBox.height)
+  await expect(page.getByPlaceholder('Type your message...')).toBeVisible()
+  await expect(page.getByText('Customer Details')).toBeVisible()
 })
