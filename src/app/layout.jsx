@@ -2,8 +2,8 @@ import './globals.css'
 import './mobile.css'
 
 export const metadata = {
-  title: 'ARC — User Management',
-  description: 'ARC dealer account administration',
+  title: 'ARC Administration',
+  description: 'ARC dealer administration and customer support',
 }
 
 export default function RootLayout({ children }) {
