@@ -6,16 +6,17 @@ import {
   UsersRound,
   X,
 } from 'lucide-react'
+import Link from 'next/link'
 import ArcLogo from './ArcLogo'
 
 const navItems = [
-  { label: 'User Management', icon: UsersRound, active: true },
-  { label: 'Customer Care', icon: Headphones },
-  { label: 'Finance', icon: CircleDollarSign },
-  { label: 'Settings', icon: Settings },
+  { label: 'User Management', icon: UsersRound, page: 'users', href: '/' },
+  { label: 'Customer Care', icon: Headphones, page: 'customer-care', href: '/customer-care' },
+  { label: 'Finance', icon: CircleDollarSign, page: 'finance', href: '#finance' },
+  { label: 'Settings', icon: Settings, page: 'settings', href: '#settings' },
 ]
 
-export default function Sidebar({ open, onClose }) {
+export default function Sidebar({ activePage = 'users', open, onClose }) {
   return (
     <>
       <aside className={`sidebar ${open ? 'sidebar--open' : ''}`}>
@@ -25,18 +26,20 @@ export default function Sidebar({ open, onClose }) {
         <ArcLogo />
         <div className="sidebar-rule" />
         <nav className="sidebar-nav" aria-label="Main navigation">
-          {navItems.map(({ label, icon: Icon, active }) => (
-            <a className={`nav-item ${active ? 'nav-item--active' : ''}`} href={`#${label}`} key={label}>
+          {navItems.map(({ label, icon: Icon, page, href }) => (
+            <Link className={`nav-item ${activePage === page ? 'nav-item--active' : ''}`} href={href} key={label}>
               <Icon aria-hidden="true" />
               <span>{label}</span>
-            </a>
+            </Link>
           ))}
         </nav>
         <div className="sidebar-divider" />
-        <a className="nav-item logout-link" href="#logout">
-          <LogOut aria-hidden="true" />
-          <span>Logout</span>
-        </a>
+        <form className="logout-form" action="/api/demo-auth/logout" method="post">
+          <button className="nav-item logout-link" type="submit">
+            <LogOut aria-hidden="true" />
+            <span>Logout</span>
+          </button>
+        </form>
         <footer className="sidebar-footer">
           <span>© 2025 ARC</span>
           <span>All rights reserved.</span>

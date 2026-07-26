@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 590 205">
+  <g fill="#fff" font-family="Arial, Helvetica, sans-serif">
+    <text x="0" y="151" font-size="132" font-weight="700">Arc</text>
+    <text x="229" y="79" font-size="27">TM</text>
+    <text x="338" y="105" font-size="49">farm</text>
+    <text x="338" y="158" font-size="49">intelligence</text>
+  </g>
+  <path
+    d="M278 3C307 68 307 137 278 202"
+    fill="none"
+    stroke="#ff2d30"
+    stroke-linecap="round"
+    stroke-width="13"
+  />
+</svg>

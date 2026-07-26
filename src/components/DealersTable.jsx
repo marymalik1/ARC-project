@@ -20,19 +20,19 @@ export default function DealersTable({ dealers, onEdit, onDelete }) {
           <tbody>
             {dealers.length > 0 ? dealers.map((dealer) => (
               <tr key={dealer.code}>
-                <td>{dealer.code}</td>
-                <td>{dealer.name}</td>
-                <td>{dealer.region}</td>
-                <td>{dealer.zone}</td>
-                <td>{dealer.territory}</td>
-                <td>
+                <td data-label="Dealer Code">{dealer.code}</td>
+                <td data-label="Dealer Name">{dealer.name}</td>
+                <td data-label="Region">{dealer.region}</td>
+                <td data-label="Zone">{dealer.zone}</td>
+                <td data-label="Territory">{dealer.territory}</td>
+                <td data-label="Status">
                   <span className={`status status--${dealer.status.toLowerCase()}`}>
                     <span />
                     {dealer.status}
                   </span>
                 </td>
-                <td>{dealer.createdOn}</td>
-                <td>
+                <td data-label="Created On">{dealer.createdOn}</td>
+                <td data-label="Actions">
                   <div className="row-actions">
                     <button type="button" onClick={() => onEdit(dealer)} aria-label={`Edit ${dealer.name}`}>
                       <Pencil />
