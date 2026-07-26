@@ -1,0 +1,126 @@
+@media (max-width: 650px) {
+  .content {
+    padding: 24px 16px 36px;
+  }
+
+  .page-heading {
+    padding-left: 0;
+  }
+
+  .stats-grid,
+  .filter-panel {
+    gap: 16px;
+    margin-top: 22px;
+  }
+
+  .stat-card {
+    height: auto;
+    min-height: 132px;
+    gap: 18px;
+    padding: 18px;
+  }
+
+  .filter-panel {
+    padding: 20px 16px;
+  }
+
+  .filter-actions {
+    gap: 12px;
+  }
+
+  .button {
+    min-height: 48px;
+    height: auto;
+    padding-block: 12px;
+  }
+
+  .table-card {
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .table-scroll {
+    overflow: visible;
+  }
+
+  .table-scroll table,
+  .table-scroll tbody,
+  .table-scroll tr,
+  .table-scroll td {
+    display: block;
+  }
+
+  .table-scroll table {
+    min-width: 0;
+  }
+
+  .table-scroll thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .table-scroll tbody {
+    display: grid;
+    gap: 14px;
+  }
+
+  .table-scroll tbody tr {
+    display: grid;
+    width: 100%;
+    padding: 8px 16px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 2px 5px rgba(20, 20, 20, 0.035);
+  }
+
+  .table-scroll tbody td {
+    display: grid;
+    width: 100%;
+    min-height: 48px;
+    height: auto;
+    grid-template-columns: minmax(96px, 0.8fr) minmax(0, 1.2fr);
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .table-scroll tbody td::before {
+    content: attr(data-label);
+    color: #66676b;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .table-scroll .row-actions {
+    justify-content: flex-start;
+  }
+
+  .table-scroll .empty-row {
+    display: block;
+    padding: 22px 0;
+    text-align: center;
+  }
+
+  .table-scroll .empty-row::before {
+    content: none;
+  }
+
+  .table-footer {
+    margin-top: 14px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+}
