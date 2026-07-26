@@ -7,7 +7,18 @@ test('reflows User Management into labeled dealer cards', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Open menu' }).click()
   await expect(page.getByRole('img', { name: 'Arc farm intelligence' })).toBeVisible()
-  await page.getByRole('complementary').getByRole('button', { name: 'Close menu' }).click()
+
+  const sidebar = page.getByRole('complementary')
+  await expect(sidebar).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)')
+
+  const logout = page.getByRole('button', { name: 'Logout' })
+  await expect(logout).toBeVisible()
+  await expect(logout).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  const logoutBox = await logout.boundingBox()
+  expect(logoutBox.x).toBeGreaterThanOrEqual(0)
+  expect(logoutBox.y + logoutBox.height).toBeLessThanOrEqual(844)
+
+  await sidebar.getByRole('button', { name: 'Close menu' }).click()
 
   const firstDealer = page.locator('tbody tr', { hasText: 'Ali Traders' })
   await expect(firstDealer.locator('td[data-label="Dealer Code"]')).toBeVisible()

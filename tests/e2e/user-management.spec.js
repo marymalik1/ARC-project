@@ -8,6 +8,15 @@ test('shows the Arc farm intelligence SVG in the shared sidebar', async ({ page 
   await expect(logo).toHaveAttribute('src', '/assets/arc-farm-intelligence.svg')
 })
 
+test('keeps the Logout action visible against the dark sidebar', async ({ page }) => {
+  await page.goto('/')
+
+  const logout = page.getByRole('button', { name: 'Logout' })
+  await expect(logout).toBeVisible()
+  await expect(logout).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await expect(logout).toHaveCSS('color', 'rgb(243, 243, 244)')
+})
+
 test('renders and filters the ARC dealer table', async ({ page }) => {
   await page.goto('/')
 
