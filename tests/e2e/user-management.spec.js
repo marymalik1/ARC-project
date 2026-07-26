@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './authenticated-test.js'
 
 test('shows the Arc farm intelligence SVG in the shared sidebar', async ({ page }) => {
   await page.goto('/')

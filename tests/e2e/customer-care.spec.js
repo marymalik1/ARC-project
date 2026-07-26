@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './authenticated-test.js'
 
 test('opens customer care from the ARC navigation', async ({ page }) => {
   await page.goto('/')
