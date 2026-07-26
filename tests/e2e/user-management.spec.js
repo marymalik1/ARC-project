@@ -1,5 +1,13 @@
 import { expect, test } from '@playwright/test'
 
+test('shows the Arc farm intelligence SVG in the shared sidebar', async ({ page }) => {
+  await page.goto('/')
+
+  const logo = page.getByRole('img', { name: 'Arc farm intelligence' })
+  await expect(logo).toBeVisible()
+  await expect(logo).toHaveAttribute('src', '/assets/arc-farm-intelligence.svg')
+})
+
 test('renders and filters the ARC dealer table', async ({ page }) => {
   await page.goto('/')
 

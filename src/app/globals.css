@@ -84,22 +84,14 @@ button {
   display: flex;
   height: 100px;
   align-items: center;
-  gap: 25px;
   padding-left: 9px;
-  color: #f4f4f5;
 }
 
-.arc-mark {
-  width: 82px;
-  height: 82px;
-  flex: none;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
-}
-
-.arc-logo span {
-  font-size: 46px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
+.arc-logo-image {
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  height: auto;
 }
 
 .sidebar-rule,
