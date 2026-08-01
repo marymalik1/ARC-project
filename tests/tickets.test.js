@@ -1,13 +1,21 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { chatCountSummary, initialTickets } from '../src/data/tickets.js'
+import { initialMessageRows, initialTicketRows } from '../src/data/tickets.js'
 import {
   applyTicketFilters,
+  calculateTicketCounts,
+  collectTicketFacets,
   EMPTY_TICKET_FILTERS,
   filterTickets,
+  mapTicketRow,
+  normalizeTicketFilters,
+  paginateTickets,
+  ticketFiltersToSearchParams,
+  ticketListTime,
   ticketsToCsv,
   updateTicketStatus,
   validateMessage,
+  validateTicketStatus,
 } from '../src/lib/tickets.js'
 
 const tickets = [
@@ -124,10 +132,9 @@ test('updateTicketStatus rejects unsupported statuses', () => {
   )
 })
 
-test('reference ticket data supplies the inbox and detail fields', () => {
-  assert.deepEqual(chatCountSummary, { all: 320, pending: 82, closed: 238 })
+test('seed ticket rows use the database column shape', () => {
   assert.deepEqual(
-    initialTickets.map(({ id, subject, status }) => ({ id, subject, status })),
+    initialTicketRows.map(({ id, subject, status }) => ({ id, subject, status })),
     [
       { id: 'TKT-000321', subject: 'Unable to login to the ARC portal', status: 'Pending' },
       { id: 'TKT-000320', subject: 'Report not generating', status: 'Pending' },
@@ -137,11 +144,87 @@ test('reference ticket data supplies the inbox and detail fields', () => {
     ],
   )
 
-  for (const ticket of initialTickets) {
-    assert.ok(ticket.chatType)
-    assert.ok(ticket.region)
-    assert.ok(ticket.zone)
-    assert.ok(ticket.territory)
-    assert.match(ticket.createdDate, /^\d{4}-\d{2}-\d{2}$/)
+  for (const row of initialTicketRows) {
+    assert.ok(row.chat_type)
+    assert.ok(row.region)
+    assert.ok(row.zone)
+    assert.ok(row.territory)
+    assert.ok(Number.isFinite(Date.parse(row.created_at)))
   }
+})
+
+test('mapTicketRow builds the UI ticket from stored columns and its thread', () => {
+  const row = initialTicketRows[0]
+  const ticket = mapTicketRow(row, {
+    messages: initialMessageRows.filter((message) => message.ticket_id === row.id),
+    tags: ['Follow Up'],
+    reference: new Date('2026-08-01T00:00:00.000Z'),
+  })
+
+  assert.equal(ticket.chatType, 'Login Issue')
+  assert.equal(ticket.createdDate, '2025-05-18')
+  assert.equal(ticket.createdOn, '18 May 2025, 10:30 AM')
+  assert.equal(ticket.customer.dealerCode, 'D00123')
+  assert.deepEqual(ticket.tags, ['Follow Up'])
+  assert.equal(ticket.messages.length, 5)
+  assert.equal(ticket.messages[0].time, '10:30 AM')
+})
+
+test('ticketListTime is relative to now, not a stored label', () => {
+  const reference = new Date('2025-05-18T12:00:00.000Z')
+
+  assert.equal(ticketListTime('2025-05-18T05:30:00.000Z', reference), '10:30 AM')
+  assert.equal(ticketListTime('2025-05-17T10:20:00.000Z', reference), 'Yesterday')
+  assert.equal(ticketListTime('2025-05-16T06:10:00.000Z', reference), '16 May')
+})
+
+test('calculateTicketCounts drives the inbox tab counters', () => {
+  const tabs = calculateTicketCounts([
+    { status: 'Pending' },
+    { status: 'Pending' },
+    { status: 'Closed' },
+  ])
+
+  assert.deepEqual(tabs, { all: 3, pending: 2, closed: 1 })
+})
+
+test('collectTicketFacets lists the distinct filter values in the data', () => {
+  assert.deepEqual(collectTicketFacets(tickets), {
+    regions: ['North', 'South', 'West'],
+    zones: ['North Zone', 'South Zone', 'West Zone'],
+    territories: ['Karachi South', 'Lahore City', 'Peshawar City'],
+    chatTypes: ['Export Issue', 'Login Issue', 'Report Issue'],
+  })
+})
+
+test('paginateTickets slices the inbox and clamps past the last page', () => {
+  const second = paginateTickets(tickets, 2, 2)
+  assert.deepEqual(second.rows.map(({ id }) => id), ['TKT-000317'])
+
+  assert.equal(paginateTickets(tickets, 9, 2).page, 2)
+})
+
+test('normalizeTicketFilters falls back to the pending tab for unknown tabs', () => {
+  assert.equal(normalizeTicketFilters({ tab: 'archived' }).tab, 'pending')
+  assert.equal(normalizeTicketFilters({ tab: 'CLOSED' }).tab, 'closed')
+})
+
+test('ticketFiltersToSearchParams only sends the filters that narrow the inbox', () => {
+  const params = ticketFiltersToSearchParams({
+    ...EMPTY_TICKET_FILTERS,
+    region: 'North',
+    query: 'login',
+    tab: 'all',
+  }, 2, 10)
+
+  assert.equal(params.get('region'), 'North')
+  assert.equal(params.get('zone'), null)
+  assert.equal(params.get('query'), 'login')
+  assert.equal(params.get('tab'), 'all')
+  assert.equal(params.get('page'), '2')
+})
+
+test('validateTicketStatus accepts only the supported statuses', () => {
+  assert.deepEqual(validateTicketStatus('Closed'), { ok: true, value: 'Closed' })
+  assert.equal(validateTicketStatus('Deleted').ok, false)
 })

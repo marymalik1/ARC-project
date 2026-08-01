@@ -1,16 +1,40 @@
 import { NextResponse } from 'next/server'
 import {
   createDealer,
-  listDealers,
+  getDealersView,
 } from '../../../lib/dealer-repository'
 import { validateDealer } from '../../../lib/dealers'
+import { getPendingTicketCount } from '../../../lib/ticket-repository'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export function viewFromSearchParams(searchParams) {
+  return {
+    filters: {
+      code: searchParams.get('code') ?? '',
+      name: searchParams.get('name') ?? '',
+      region: searchParams.get('region') ?? '',
+      zone: searchParams.get('zone') ?? '',
+      territory: searchParams.get('territory') ?? '',
+      query: searchParams.get('q') ?? '',
+    },
+    page: searchParams.get('page'),
+    pageSize: searchParams.get('pageSize'),
+  }
+}
+
+export async function GET(request) {
   try {
-    const dealers = await listDealers()
-    return NextResponse.json({ dealers })
+    const { searchParams } = new URL(request.url)
+    const [view, notifications] = await Promise.all([
+      getDealersView(viewFromSearchParams(searchParams)),
+      getPendingTicketCount(),
+    ])
+
+    return NextResponse.json({ ...view, notifications }, {
+      headers: { 'Cache-Control': 'no-store' },
+    })
   } catch {
     return NextResponse.json(
       { error: 'Unable to load dealer accounts.' },

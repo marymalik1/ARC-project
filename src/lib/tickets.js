@@ -1,4 +1,11 @@
 const supportedStatuses = new Set(['Pending', 'Closed'])
+const supportedTabs = new Set(['all', 'pending', 'closed'])
+
+// The support desk reports in Pakistan Standard Time.
+const DISPLAY_TIME_ZONE = 'Asia/Karachi'
+
+export const TICKET_PAGE_SIZE = 10
+export const MAX_TICKET_PAGE_SIZE = 500
 
 export const EMPTY_TICKET_FILTERS = Object.freeze({
   dealerCode: '',
@@ -11,6 +18,15 @@ export const EMPTY_TICKET_FILTERS = Object.freeze({
   toDate: '',
   tab: 'pending',
   query: '',
+})
+
+export const emptyTicketCounts = Object.freeze({ all: 0, pending: 0, closed: 0 })
+
+export const emptyTicketFacets = Object.freeze({
+  regions: [],
+  zones: [],
+  territories: [],
+  chatTypes: [],
 })
 
 const normalize = (value) => String(value ?? '').trim().toLowerCase()
@@ -59,14 +75,213 @@ export function applyTicketFilters(tickets, filters) {
   })
 }
 
+export function normalizeTicketFilters(input) {
+  const tab = String(input?.tab ?? '').trim().toLowerCase()
+
+  return {
+    dealerCode: String(input?.dealerCode ?? '').trim(),
+    dealerName: String(input?.dealerName ?? '').trim(),
+    region: String(input?.region ?? '').trim(),
+    zone: String(input?.zone ?? '').trim(),
+    territory: String(input?.territory ?? '').trim(),
+    chatType: String(input?.chatType ?? '').trim(),
+    fromDate: String(input?.fromDate ?? '').trim(),
+    toDate: String(input?.toDate ?? '').trim(),
+    tab: supportedTabs.has(tab) ? tab : EMPTY_TICKET_FILTERS.tab,
+    query: String(input?.query ?? '').trim(),
+  }
+}
+
+export function normalizeTicketPage(input) {
+  const page = Number.parseInt(input, 10)
+  return Number.isFinite(page) && page > 0 ? page : 1
+}
+
+export function normalizeTicketPageSize(input) {
+  const pageSize = Number.parseInt(input, 10)
+
+  if (!Number.isFinite(pageSize) || pageSize < 1) {
+    return TICKET_PAGE_SIZE
+  }
+
+  return Math.min(pageSize, MAX_TICKET_PAGE_SIZE)
+}
+
+export function ticketFiltersToSearchParams(filters, page, pageSize) {
+  const values = normalizeTicketFilters(filters)
+  const params = new URLSearchParams()
+
+  for (const field of [
+    'dealerCode',
+    'dealerName',
+    'region',
+    'zone',
+    'territory',
+    'chatType',
+    'fromDate',
+    'toDate',
+    'query',
+  ]) {
+    if (values[field]) {
+      params.set(field, values[field])
+    }
+  }
+
+  params.set('tab', values.tab)
+  params.set('page', String(normalizeTicketPage(page)))
+  params.set('pageSize', String(normalizeTicketPageSize(pageSize)))
+
+  return params
+}
+
+export function ticketTotalPages(total, pageSize) {
+  return Math.max(1, Math.ceil(total / normalizeTicketPageSize(pageSize)))
+}
+
+export function paginateTickets(tickets, page, pageSize) {
+  const size = normalizeTicketPageSize(pageSize)
+  const safePage = Math.min(normalizeTicketPage(page), ticketTotalPages(tickets.length, size))
+  const start = (safePage - 1) * size
+
+  return { rows: tickets.slice(start, start + size), page: safePage }
+}
+
+export function calculateTicketCounts(tickets) {
+  return tickets.reduce((counts, ticket) => ({
+    all: counts.all + 1,
+    pending: counts.pending + (ticket.status === 'Pending' ? 1 : 0),
+    closed: counts.closed + (ticket.status === 'Closed' ? 1 : 0),
+  }), { ...emptyTicketCounts })
+}
+
+function sortedUnique(rows, field) {
+  return [...new Set(rows.map((row) => row[field]).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b),
+  )
+}
+
+/** Collects the distinct filter values from mapped tickets. */
+export function collectTicketFacets(tickets) {
+  return {
+    regions: sortedUnique(tickets, 'region'),
+    zones: sortedUnique(tickets, 'zone'),
+    territories: sortedUnique(tickets, 'territory'),
+    chatTypes: sortedUnique(tickets, 'chatType'),
+  }
+}
+
+function toDate(value) {
+  return value instanceof Date ? value : new Date(value)
+}
+
+function formatTime(date) {
+  return new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: DISPLAY_TIME_ZONE,
+  }).format(date)
+}
+
+function formatDay(date) {
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    timeZone: DISPLAY_TIME_ZONE,
+  }).format(date)
+}
+
+function isoDate(date) {
+  return new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: DISPLAY_TIME_ZONE,
+  }).format(date)
+}
+
+/** Relative label for the inbox list: a time today, "Yesterday", else the day. */
+export function ticketListTime(createdAt, reference = new Date()) {
+  const date = toDate(createdAt)
+  const created = isoDate(date)
+  const today = isoDate(reference)
+
+  if (created === today) {
+    return formatTime(date)
+  }
+
+  const yesterday = new Date(reference)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  if (created === isoDate(yesterday)) {
+    return 'Yesterday'
+  }
+
+  return formatDay(date)
+}
+
+export function mapMessageRow(row) {
+  const sentAt = toDate(row.sent_at)
+
+  return {
+    id: `m-${row.id}`,
+    sender: row.sender,
+    time: formatTime(sentAt),
+    body: row.body,
+  }
+}
+
+export function mapTicketRow(row, { messages = [], tags = [], reference = new Date() } = {}) {
+  const createdAt = toDate(row.created_at)
+
+  return {
+    id: row.id,
+    subject: row.subject,
+    priority: row.priority,
+    status: row.status,
+    chatType: row.chat_type,
+    region: row.region,
+    zone: row.zone,
+    territory: row.territory,
+    channel: row.channel,
+    assignedTo: row.assigned_to,
+    preview: row.preview,
+    listTime: ticketListTime(createdAt, reference),
+    createdDate: isoDate(createdAt),
+    createdOn: `${new Intl.DateTimeFormat('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: DISPLAY_TIME_ZONE,
+    }).format(createdAt)}, ${formatTime(createdAt)}`,
+    customer: {
+      name: row.customer_name,
+      dealerCode: row.customer_dealer_code,
+      location: row.customer_location,
+      phone: row.customer_phone,
+      email: row.customer_email,
+    },
+    tags,
+    messages: messages.map(mapMessageRow),
+  }
+}
+
 export function validateMessage(message) {
-  const value = message.trim()
+  const value = String(message ?? '').trim()
 
   if (!value) {
     return { ok: false, error: 'Please enter a message.' }
   }
 
   return { ok: true, value }
+}
+
+export function validateTicketStatus(status) {
+  if (!supportedStatuses.has(status)) {
+    return { ok: false, error: `Unsupported ticket status: ${status}` }
+  }
+
+  return { ok: true, value: status }
 }
 
 export function updateTicketStatus(tickets, ticketId, status) {

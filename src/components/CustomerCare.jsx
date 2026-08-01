@@ -20,37 +20,19 @@ import {
   UserRoundCog,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { chatCountSummary } from '../data/tickets'
+import { buildPageItems } from '../lib/pagination'
 import {
-  applyTicketFilters,
   EMPTY_TICKET_FILTERS,
+  emptyTicketCounts,
+  emptyTicketFacets,
+  ticketTotalPages,
   ticketsToCsv,
-  updateTicketStatus,
   validateMessage,
 } from '../lib/tickets'
+import { useTicketView } from '../lib/use-ticket-view'
 import Header from './Header'
 import Sidebar from './Sidebar'
-
-const filterOptions = {
-  regions: ['North', 'South', 'Central', 'West'],
-  zones: ['North Zone', 'South Zone', 'Central Zone', 'West Zone'],
-  territories: [
-    'Lahore City',
-    'Karachi South',
-    'Islamabad East',
-    'Sheikhupura',
-    'Peshawar City',
-  ],
-  chatTypes: [
-    'Login Issue',
-    'Report Issue',
-    'Ledger Issue',
-    'Product Issue',
-    'Export Issue',
-  ],
-}
-
-const availableTags = ['Login Issue', 'High Priority', 'Follow Up']
+import SyncStatus from './SyncStatus'
 
 function PriorityBadge({ value }) {
   return (
@@ -108,6 +90,7 @@ function DateFilter({ label, name, value, placeholder, onChange }) {
 
 function SupportFilters({
   filters,
+  facets = emptyTicketFacets,
   exportHref,
   onChange,
   onApply,
@@ -137,7 +120,7 @@ function SupportFilters({
         label="Region"
         name="region"
         value={filters.region}
-        options={filterOptions.regions}
+        options={facets.regions}
         allLabel="All Regions"
         onChange={onChange}
       />
@@ -145,7 +128,7 @@ function SupportFilters({
         label="Zone"
         name="zone"
         value={filters.zone}
-        options={filterOptions.zones}
+        options={facets.zones}
         allLabel="All Zones"
         onChange={onChange}
       />
@@ -153,7 +136,7 @@ function SupportFilters({
         label="Territory"
         name="territory"
         value={filters.territory}
-        options={filterOptions.territories}
+        options={facets.territories}
         allLabel="All Territories"
         onChange={onChange}
       />
@@ -161,7 +144,7 @@ function SupportFilters({
         label="Chat Type"
         name="chatType"
         value={filters.chatType}
-        options={filterOptions.chatTypes}
+        options={facets.chatTypes}
         allLabel="All Types"
         onChange={onChange}
       />
@@ -201,13 +184,13 @@ function SupportFilters({
   )
 }
 
-function ChatTabs({ activeTab, onTab }) {
+function ChatTabs({ activeTab, counts = emptyTicketCounts, onTab }) {
   return (
     <div className="chat-tabs" role="tablist" aria-label="Chat status">
       {[
-        ['all', `Chats (${chatCountSummary.all})`],
-        ['pending', `Pending (${chatCountSummary.pending})`],
-        ['closed', `Closed (${chatCountSummary.closed})`],
+        ['all', `Chats (${counts.all})`],
+        ['pending', `Pending (${counts.pending})`],
+        ['closed', `Closed (${counts.closed})`],
       ].map(([value, label]) => (
         <button
           key={value}
@@ -251,15 +234,22 @@ function ChatInbox({
   selectedId,
   query,
   activeTab,
+  counts,
+  total = tickets.length,
+  page = 1,
+  pageSize = tickets.length || 1,
   onQuery,
   onTab,
   onSelect,
+  onPage = () => {},
 }) {
-  const [pageNumber, setPageNumber] = useState(1)
+  const lastPage = ticketTotalPages(total, pageSize)
+  const firstEntry = total === 0 ? 0 : (page - 1) * pageSize + 1
+  const lastEntry = Math.min(page * pageSize, total)
 
   return (
     <section className="chat-inbox" aria-label="Chats">
-      <ChatTabs activeTab={activeTab} onTab={onTab} />
+      <ChatTabs activeTab={activeTab} counts={counts} onTab={onTab} />
 
       <div className="chat-search-row">
         <label className="chat-search">
@@ -295,28 +285,23 @@ function ChatInbox({
       </div>
 
       <footer className="ticket-list-footer">
-        <p>Showing 1 to {tickets.length} of {activeTab === 'closed' ? chatCountSummary.closed : activeTab === 'pending' ? chatCountSummary.pending : chatCountSummary.all} chats</p>
+        <p aria-live="polite">
+          Showing {firstEntry} to {lastEntry} of {total} chats
+        </p>
         <nav className="ticket-pagination" aria-label="Chat pages">
-          {[1, 2, 3].map((value) => (
+          {buildPageItems(page, lastPage).map((item) => item.ellipsis ? (
+            <span aria-hidden="true" key={item.key}>…</span>
+          ) : (
             <button
-              className={pageNumber === value ? 'active' : ''}
+              className={item.page === page ? 'active' : ''}
               type="button"
-              aria-current={pageNumber === value ? 'page' : undefined}
-              onClick={() => setPageNumber(value)}
-              key={value}
+              aria-current={item.page === page ? 'page' : undefined}
+              onClick={() => onPage(item.page)}
+              key={item.key}
             >
-              {value}
+              {item.page}
             </button>
           ))}
-          <span aria-hidden="true">…</span>
-          <button
-            className={pageNumber === 17 ? 'active' : ''}
-            type="button"
-            aria-current={pageNumber === 17 ? 'page' : undefined}
-            onClick={() => setPageNumber(17)}
-          >
-            17
-          </button>
         </nav>
       </footer>
     </section>
@@ -346,6 +331,7 @@ function Conversation({
   ticket,
   draft,
   selectedTags,
+  availableTags = [],
   onDraft,
   onSend,
   onToggleTag,
@@ -581,25 +567,31 @@ function DetailRail({ ticket, onStatus }) {
   )
 }
 
-export default function CustomerCare({ initialTickets }) {
-  const [tickets, setTickets] = useState(() => initialTickets)
-  const [selectedId, setSelectedId] = useState(initialTickets[0]?.id ?? '')
+export default function CustomerCare({ initialView, notifications }) {
+  const [selectedId, setSelectedId] = useState(initialView.tickets[0]?.id ?? '')
   const [draft, setDraft] = useState('')
   const [draftFilters, setDraftFilters] = useState(() => ({ ...EMPTY_TICKET_FILTERS }))
-  const [appliedFilters, setAppliedFilters] = useState(() => ({ ...EMPTY_TICKET_FILTERS }))
-  const [tagsByTicket, setTagsByTicket] = useState({})
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const visibleTickets = useMemo(
-    () => applyTicketFilters(tickets, appliedFilters),
-    [tickets, appliedFilters],
-  )
+  const {
+    view,
+    appliedFilters,
+    applyFilters: applyTicketQuery,
+    patchFilters,
+    goToPage,
+    error,
+    loading,
+    refresh,
+    setError,
+  } = useTicketView({ initialView })
+
+  const tickets = view.tickets
   const exportHref = useMemo(
-    () => `data:text/csv;charset=utf-8,${encodeURIComponent(ticketsToCsv(visibleTickets))}`,
-    [visibleTickets],
+    () => `data:text/csv;charset=utf-8,${encodeURIComponent(ticketsToCsv(tickets))}`,
+    [tickets],
   )
-  const selectedTicket = visibleTickets.find((ticket) => ticket.id === selectedId)
-    ?? visibleTickets[0]
+  const selectedTicket = tickets.find((ticket) => ticket.id === selectedId)
+    ?? tickets[0]
     ?? null
 
   const updateDraftFilter = (name, value) => {
@@ -608,26 +600,26 @@ export default function CustomerCare({ initialTickets }) {
 
   const applyFilters = (event) => {
     event.preventDefault()
-    setAppliedFilters({ ...draftFilters })
+    applyTicketQuery(draftFilters)
   }
 
   const clearFilters = () => {
     const cleared = { ...EMPTY_TICKET_FILTERS }
     setDraftFilters(cleared)
-    setAppliedFilters(cleared)
+    applyTicketQuery(cleared)
   }
 
   const switchTab = (tab) => {
     setDraftFilters((current) => ({ ...current, tab }))
-    setAppliedFilters((current) => ({ ...current, tab }))
+    patchFilters({ tab })
   }
 
   const updateInboxQuery = (query) => {
     setDraftFilters((current) => ({ ...current, query }))
-    setAppliedFilters((current) => ({ ...current, query }))
+    patchFilters({ query })
   }
 
-  const sendMessage = (event) => {
+  const sendMessage = async (event) => {
     event.preventDefault()
     const result = validateMessage(draft)
 
@@ -635,49 +627,72 @@ export default function CustomerCare({ initialTickets }) {
       return
     }
 
-    setTickets((current) => current.map((ticket) => (
-      ticket.id === selectedTicket.id
-        ? {
-            ...ticket,
-            messages: [
-              ...ticket.messages,
-              {
-                id: `message-${Date.now()}`,
-                sender: 'agent',
-                time: new Intl.DateTimeFormat('en', {
-                  hour: 'numeric',
-                  minute: '2-digit',
-                }).format(new Date()),
-                body: result.value,
-              },
-            ],
-          }
-        : ticket
-    )))
-    setDraft('')
-  }
+    try {
+      setError('')
+      const response = await fetch(`/api/tickets/${selectedTicket.id}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: result.value }),
+      })
+      const body = await response.json()
 
-  const changeStatus = (status) => {
-    if (!selectedTicket) {
-      return
-    }
-    setTickets((current) => updateTicketStatus(current, selectedTicket.id, status))
-  }
-
-  const toggleTag = (tag) => {
-    if (!selectedTicket) {
-      return
-    }
-
-    setTagsByTicket((current) => {
-      const selected = current[selectedTicket.id] ?? []
-      return {
-        ...current,
-        [selectedTicket.id]: selected.includes(tag)
-          ? selected.filter((value) => value !== tag)
-          : [...selected, tag],
+      if (!response.ok) {
+        throw new Error(body.error || 'Unable to send this message.')
       }
-    })
+
+      setDraft('')
+      await refresh({ silent: true })
+    } catch (sendError) {
+      setError(sendError.message)
+    }
+  }
+
+  const changeStatus = async (status) => {
+    if (!selectedTicket) {
+      return
+    }
+
+    try {
+      setError('')
+      const response = await fetch(`/api/tickets/${selectedTicket.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      const body = await response.json()
+
+      if (!response.ok) {
+        throw new Error(body.error || 'Unable to update this chat.')
+      }
+
+      await refresh({ silent: true })
+    } catch (statusError) {
+      setError(statusError.message)
+    }
+  }
+
+  const toggleTag = async (tag) => {
+    if (!selectedTicket) {
+      return
+    }
+
+    try {
+      setError('')
+      const response = await fetch(`/api/tickets/${selectedTicket.id}/tags`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag }),
+      })
+      const body = await response.json()
+
+      if (!response.ok) {
+        throw new Error(body.error || 'Unable to update these tags.')
+      }
+
+      await refresh({ silent: true })
+    } catch (tagError) {
+      setError(tagError.message)
+    }
   }
 
   return (
@@ -688,7 +703,10 @@ export default function CustomerCare({ initialTickets }) {
         onClose={() => setSidebarOpen(false)}
       />
       <div className="main-shell">
-        <Header onMenu={() => setSidebarOpen(true)} />
+        <Header
+          onMenu={() => setSidebarOpen(true)}
+          notifications={view.counts?.pending ?? notifications}
+        />
         <main className="customer-care-content">
           <div className="page-heading customer-care-heading">
             <h1>Customer Care</h1>
@@ -696,31 +714,41 @@ export default function CustomerCare({ initialTickets }) {
               <span>Home</span>
               <span aria-hidden="true">›</span>
               <strong>Customer Care</strong>
+              <SyncStatus syncedAt={view.syncedAt} loading={loading} />
             </div>
           </div>
 
           <SupportFilters
             filters={draftFilters}
+            facets={view.facets}
             exportHref={exportHref}
             onChange={updateDraftFilter}
             onApply={applyFilters}
             onClear={clearFilters}
           />
 
+          <p className="request-error" role="alert" aria-live="polite">{error}</p>
+
           <div className="support-workspace">
             <ChatInbox
-              tickets={visibleTickets}
+              tickets={tickets}
               selectedId={selectedTicket?.id ?? ''}
               query={appliedFilters.query}
               activeTab={appliedFilters.tab}
+              counts={view.counts}
+              total={view.total}
+              page={view.page}
+              pageSize={view.pageSize}
               onQuery={updateInboxQuery}
               onTab={switchTab}
               onSelect={setSelectedId}
+              onPage={goToPage}
             />
             <Conversation
               ticket={selectedTicket}
               draft={draft}
-              selectedTags={selectedTicket ? tagsByTicket[selectedTicket.id] ?? [] : []}
+              selectedTags={selectedTicket?.tags ?? []}
+              availableTags={view.availableTags}
               onDraft={setDraft}
               onSend={sendMessage}
               onToggleTag={toggleTag}

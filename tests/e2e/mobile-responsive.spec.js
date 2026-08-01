@@ -46,7 +46,7 @@ test('stacks Customer Care panels and header actions on mobile', async ({ page }
 
   const layout = await page.evaluate(() => {
     const panelTops = [
-      '.ticket-list-panel',
+      '.chat-inbox',
       '.conversation-panel',
       '.ticket-details-rail',
     ].map((selector) => Math.round(document.querySelector(selector).getBoundingClientRect().top))

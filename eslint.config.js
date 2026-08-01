@@ -8,13 +8,17 @@ export default [
     languageOptions: {
       ecmaVersion: 2020,
       globals: {
+        AbortController: 'readonly',
         Blob: 'readonly',
+        clearInterval: 'readonly',
         document: 'readonly',
         fetch: 'readonly',
         FormData: 'readonly',
         globalThis: 'readonly',
         process: 'readonly',
+        setInterval: 'readonly',
         URL: 'readonly',
+        URLSearchParams: 'readonly',
         window: 'readonly',
       },
       parserOptions: {

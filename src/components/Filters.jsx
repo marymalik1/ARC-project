@@ -1,18 +1,9 @@
 import { Download, ListFilter, Plus, Search } from 'lucide-react'
-
-const regionOptions = ['All Regions', 'Lahore', 'Karachi', 'Islamabad', 'Peshawar']
-const zoneOptions = ['All Zones', 'North Zone', 'South Zone', 'Central Zone', 'West Zone']
-const territoryOptions = [
-  'All Territories',
-  'Lahore City',
-  'Karachi South',
-  'Islamabad East',
-  'Sheikhupura',
-  'Peshawar City',
-]
+import { ANY_REGION, ANY_TERRITORY, ANY_ZONE, emptyFacets } from '../lib/dealers'
 
 export default function Filters({
   values,
+  facets = emptyFacets,
   onChange,
   onSearch,
   onClear,
@@ -20,6 +11,11 @@ export default function Filters({
   onCreate,
 }) {
   const update = (field) => (event) => onChange(field, event.target.value)
+
+  // Dropdowns list the regions, zones and territories that exist in the database.
+  const regionOptions = [ANY_REGION, ...facets.regions]
+  const zoneOptions = [ANY_ZONE, ...facets.zones]
+  const territoryOptions = [ANY_TERRITORY, ...facets.territories]
 
   return (
     <form

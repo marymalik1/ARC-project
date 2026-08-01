@@ -1,4 +1,6 @@
-export const initialDealers = [
+// Development seed rows. These use the same shape as `public.dealers` so the
+// in-memory fallback repository behaves exactly like PostgreSQL.
+export const initialDealerRows = [
   {
     code: 'D00123',
     name: 'Ali Traders',
@@ -6,7 +8,7 @@ export const initialDealers = [
     zone: 'North Zone',
     territory: 'Lahore City',
     status: 'Active',
-    createdOn: '18 May 2025',
+    created_on: '2025-05-18',
   },
   {
     code: 'D00124',
@@ -15,7 +17,7 @@ export const initialDealers = [
     zone: 'South Zone',
     territory: 'Karachi South',
     status: 'Active',
-    createdOn: '18 May 2025',
+    created_on: '2025-05-18',
   },
   {
     code: 'D00125',
@@ -24,7 +26,7 @@ export const initialDealers = [
     zone: 'Central Zone',
     territory: 'Islamabad East',
     status: 'Inactive',
-    createdOn: '17 May 2025',
+    created_on: '2025-05-17',
   },
   {
     code: 'D00126',
@@ -33,7 +35,7 @@ export const initialDealers = [
     zone: 'North Zone',
     territory: 'Sheikhupura',
     status: 'Active',
-    createdOn: '17 May 2025',
+    created_on: '2025-05-17',
   },
   {
     code: 'D00127',
@@ -42,13 +44,6 @@ export const initialDealers = [
     zone: 'West Zone',
     territory: 'Peshawar City',
     status: 'Inactive',
-    createdOn: '16 May 2025',
+    created_on: '2025-05-16',
   },
-]
-
-export const accountStats = [
-  { label: 'All Accounts', value: '1,250', icon: 'all' },
-  { label: 'Active Accounts', value: '980', icon: 'active' },
-  { label: 'Inactive Accounts', value: '270', icon: 'inactive' },
-  { label: 'New This Month', value: '125', icon: 'new' },
 ]
