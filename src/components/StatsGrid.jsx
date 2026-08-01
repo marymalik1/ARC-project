@@ -1,4 +1,4 @@
-import { accountStats } from '../data/dealers'
+import { emptyStats, formatCount, statColumns } from '../lib/dealers'
 
 function UserMetricIcon({ type }) {
   const marker =
@@ -39,17 +39,17 @@ function UserMetricIcon({ type }) {
   )
 }
 
-export default function StatsGrid() {
+export default function StatsGrid({ stats = emptyStats }) {
   return (
     <section className="stats-grid" aria-label="Account overview">
-      {accountStats.map((stat) => (
-        <article className="stat-card" key={stat.label}>
+      {statColumns.map((stat) => (
+        <article className="stat-card" key={stat.key}>
           <div className="stat-icon">
             <UserMetricIcon type={stat.icon} />
           </div>
           <div className="stat-copy">
             <h2>{stat.label}</h2>
-            <strong>{stat.value}</strong>
+            <strong aria-live="polite">{formatCount(stats[stat.key])}</strong>
             <span>Total</span>
           </div>
         </article>

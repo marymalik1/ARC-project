@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
+import { emptyFacets } from '../lib/dealers'
 
-export default function AccountModal({ dealer, onClose, onSave }) {
+export default function AccountModal({ dealer, facets = emptyFacets, onClose, onSave }) {
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onMouseDown={(event) => event.stopPropagation()}>
@@ -19,7 +20,6 @@ export default function AccountModal({ dealer, onClose, onSave }) {
               zone: form.get('zone'),
               territory: form.get('territory'),
               status: form.get('status'),
-              createdOn: dealer?.createdOn || '19 May 2025',
             })
           }}
         >
@@ -33,15 +33,15 @@ export default function AccountModal({ dealer, onClose, onSave }) {
           </label>
           <label>
             Region
-            <input name="region" defaultValue={dealer?.region} required />
+            <input name="region" list="region-options" defaultValue={dealer?.region} required />
           </label>
           <label>
             Zone
-            <input name="zone" defaultValue={dealer?.zone} required />
+            <input name="zone" list="zone-options" defaultValue={dealer?.zone} required />
           </label>
           <label>
             Territory
-            <input name="territory" defaultValue={dealer?.territory} required />
+            <input name="territory" list="territory-options" defaultValue={dealer?.territory} required />
           </label>
           <label>
             Status
@@ -50,6 +50,15 @@ export default function AccountModal({ dealer, onClose, onSave }) {
               <option>Inactive</option>
             </select>
           </label>
+          <datalist id="region-options">
+            {facets.regions.map((option) => <option key={option} value={option} />)}
+          </datalist>
+          <datalist id="zone-options">
+            {facets.zones.map((option) => <option key={option} value={option} />)}
+          </datalist>
+          <datalist id="territory-options">
+            {facets.territories.map((option) => <option key={option} value={option} />)}
+          </datalist>
           <div className="modal-actions">
             <button className="button button--secondary" type="button" onClick={onClose}>Cancel</button>
             <button className="button button--primary" type="submit">Save Account</button>

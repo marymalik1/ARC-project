@@ -1,6 +1,20 @@
 import { Pencil, Trash2 } from 'lucide-react'
+import { formatCount, totalPages } from '../lib/dealers'
+import { buildPageItems } from '../lib/pagination'
 
-export default function DealersTable({ dealers, onEdit, onDelete }) {
+export default function DealersTable({
+  dealers,
+  total = dealers.length,
+  page = 1,
+  pageSize = dealers.length || 1,
+  onPageChange = () => {},
+  onEdit,
+  onDelete,
+}) {
+  const lastPage = totalPages(total, pageSize)
+  const firstEntry = total === 0 ? 0 : (page - 1) * pageSize + 1
+  const lastEntry = Math.min(page * pageSize, total)
+
   return (
     <section className="table-card" aria-label="Dealer accounts">
       <div className="table-scroll">
@@ -52,15 +66,29 @@ export default function DealersTable({ dealers, onEdit, onDelete }) {
         </table>
       </div>
       <div className="table-footer">
-        <p>Showing 1 to {dealers.length} of 1,250 entries</p>
+        <p aria-live="polite">
+          Showing {formatCount(firstEntry)} to {formatCount(lastEntry)} of {formatCount(total)} entries
+        </p>
         <nav className="pagination" aria-label="Table pagination">
-          <button type="button" disabled>Previous</button>
-          <button className="page-active" type="button" aria-current="page">1</button>
-          <button type="button">2</button>
-          <button type="button">3</button>
-          <span>...</span>
-          <button type="button">250</button>
-          <button type="button">Next</button>
+          <button type="button" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+            Previous
+          </button>
+          {buildPageItems(page, lastPage).map((item) => item.ellipsis ? (
+            <span key={item.key}>...</span>
+          ) : (
+            <button
+              key={item.key}
+              className={item.page === page ? 'page-active' : undefined}
+              type="button"
+              aria-current={item.page === page ? 'page' : undefined}
+              onClick={() => onPageChange(item.page)}
+            >
+              {item.page}
+            </button>
+          ))}
+          <button type="button" disabled={page >= lastPage} onClick={() => onPageChange(page + 1)}>
+            Next
+          </button>
         </nav>
       </div>
     </section>

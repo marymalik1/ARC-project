@@ -30,13 +30,42 @@ test('renders and filters the ARC dealer table', async ({ page }) => {
   await expect(page.getByText('Ali Traders')).toHaveCount(0)
 })
 
-test('serves dealer data through the App Router API', async ({ request }) => {
+test('serves dealer data, stats, and filter options through the App Router API', async ({ request }) => {
   const response = await request.get('/api/dealers')
   expect(response.ok()).toBeTruthy()
 
   const body = await response.json()
-  expect(body.dealers).toHaveLength(5)
   expect(body.dealers[0].code).toBe('D00123')
+  expect(body.total).toBe(body.stats.total)
+  expect(body.stats.active + body.stats.inactive).toBe(body.stats.total)
+  expect(body.facets.regions).toContain('Lahore')
+  expect(body.syncedAt).toBeTruthy()
+})
+
+test('filters and paginates against the database', async ({ request }) => {
+  const filtered = await request.get('/api/dealers?region=Lahore')
+  const body = await filtered.json()
+
+  expect(body.dealers.every((dealer) => dealer.region === 'Lahore')).toBe(true)
+  expect(body.total).toBe(body.dealers.length)
+
+  const firstPage = await request.get('/api/dealers?page=1&pageSize=2')
+  const firstBody = await firstPage.json()
+
+  expect(firstBody.dealers).toHaveLength(2)
+  expect(firstBody.page).toBe(1)
+  expect(firstBody.total).toBeGreaterThan(2)
+})
+
+test('reports live counts and real entry totals instead of fixed numbers', async ({ page }) => {
+  await page.goto('/')
+
+  const allAccounts = page.locator('.stat-card', { hasText: 'All Accounts' })
+  const total = Number(await allAccounts.locator('strong').innerText())
+
+  expect(total).toBeGreaterThan(0)
+  await expect(page.getByText(`of ${total} entries`)).toBeVisible()
+  await expect(page.getByText(/Live · synced/)).toBeVisible()
 })
 
 test('opens the create account dialog', async ({ page }) => {
