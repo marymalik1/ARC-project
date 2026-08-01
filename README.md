@@ -60,10 +60,23 @@ connection string:
 ```bash
 DATABASE_URL=postgresql://...
 DATABASE_SSL=true
+DATABASE_CA_CERT=supabase/prod-ca-2021.crt
 ```
 
-Apply the migrations listed above through the Supabase CLI or SQL editor before
-connecting the app.
+Supabase serves its pooler behind a private root CA that Node does not trust by
+default, so `DATABASE_CA_CERT` supplies that root and certificate verification
+stays on. Download your own copy from **Project Settings → Database → SSL
+Configuration** to confirm the committed PEM.
+
+Then apply the migrations:
+
+```bash
+npm run migrate
+```
+
+The app reports which backend it is using — `curl localhost:3000/api/dealers`
+returns `"source": "database"` when connected and `"source": "memory"` when
+falling back to the in-memory development repository.
 
 ## Verification
 
