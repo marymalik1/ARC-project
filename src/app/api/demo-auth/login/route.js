@@ -23,7 +23,12 @@ export async function POST(request) {
     })
     response.cookies.set(SESSION_COOKIE, await createSessionToken(user.id), sessionCookieOptions())
     return response
-  } catch {
+  } catch (error) {
+    // The reader is told nothing beyond "unavailable" on purpose, but a silent
+    // catch leaves an operator with no way to tell a missing SESSION_SECRET from
+    // an unreachable database. Both land here, and only the log says which.
+    console.error('Sign-in failed:', error)
+
     return NextResponse.redirect(buildDemoRedirectUrl(request, '/login?error=unavailable'), {
       status: 303,
     })

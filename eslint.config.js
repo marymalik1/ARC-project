@@ -14,6 +14,7 @@ export default [
         btoa: 'readonly',
         clearInterval: 'readonly',
         clearTimeout: 'readonly',
+        console: 'readonly',
         // Web Crypto, not node:crypto — session.js runs on Edge and Node alike.
         crypto: 'readonly',
         document: 'readonly',
