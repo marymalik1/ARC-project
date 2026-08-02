@@ -36,8 +36,10 @@
 }
 
 .login-brand img {
-  width: min(100%, 430px);
+  width: min(100%, 400px);
   height: auto;
+  /* the mark ships on a black backdrop; screen melts it into the panel */
+  mix-blend-mode: screen;
 }
 
 .login-brand > div {

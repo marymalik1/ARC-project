@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { CAPABILITIES } from '../../../lib/permissions'
+import { requirePermission } from '../../../lib/require-permission'
 import { getTicketsView } from '../../../lib/ticket-repository'
 
 export const runtime = 'nodejs'
@@ -25,6 +27,12 @@ export function ticketViewFromSearchParams(searchParams) {
 
 export async function GET(request) {
   try {
+    const { response: denied } = await requirePermission(CAPABILITIES.CARE_VIEW)
+
+    if (denied) {
+      return denied
+    }
+
     const { searchParams } = new URL(request.url)
     const view = await getTicketsView(ticketViewFromSearchParams(searchParams))
 

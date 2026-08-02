@@ -40,20 +40,29 @@ export default function DealersTable({
                 <td data-label="Zone">{dealer.zone}</td>
                 <td data-label="Territory">{dealer.territory}</td>
                 <td data-label="Status">
-                  <span className={`status status--${dealer.status.toLowerCase()}`}>
-                    <span />
-                    {dealer.status}
-                  </span>
+                  <div className="status-cell">
+                    <span className={`status status--${dealer.status.toLowerCase()}`}>
+                      <span />
+                      {dealer.status}
+                    </span>
+                    {/* Self-registrations arrive unverified and need a review. */}
+                    {!dealer.verified && <span className="status-pending">Unverified</span>}
+                  </div>
                 </td>
                 <td data-label="Created On">{dealer.createdOn}</td>
                 <td data-label="Actions">
                   <div className="row-actions">
-                    <button type="button" onClick={() => onEdit(dealer)} aria-label={`Edit ${dealer.name}`}>
-                      <Pencil />
-                    </button>
-                    <button className="delete-action" type="button" onClick={() => onDelete(dealer.code)} aria-label={`Delete ${dealer.name}`}>
-                      <Trash2 />
-                    </button>
+                    {onEdit && (
+                      <button type="button" onClick={() => onEdit(dealer)} aria-label={`Edit ${dealer.name}`}>
+                        <Pencil />
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button className="delete-action" type="button" onClick={() => onDelete(dealer.code)} aria-label={`Delete ${dealer.name}`}>
+                        <Trash2 />
+                      </button>
+                    )}
+                    {!onEdit && !onDelete && <span className="row-actions-empty">—</span>}
                   </div>
                 </td>
               </tr>

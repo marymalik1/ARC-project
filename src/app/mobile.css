@@ -223,10 +223,6 @@
 }
 
 @media (max-width: 900px) {
-  .customer-care-shell .main-shell {
-    margin-left: 0;
-  }
-
   .support-filters {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }

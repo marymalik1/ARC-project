@@ -1,11 +1,11 @@
 import { expect, test } from './authenticated-test.js'
 
-test('shows the Arc farm intelligence SVG in the shared sidebar', async ({ page }) => {
+test('shows the FMC Partner logo in the shared sidebar', async ({ page }) => {
   await page.goto('/')
 
-  const logo = page.getByRole('img', { name: 'Arc farm intelligence' })
+  const logo = page.getByRole('img', { name: 'FMC Partner — Growing Together' })
   await expect(logo).toBeVisible()
-  await expect(logo).toHaveAttribute('src', '/assets/arc-farm-intelligence.svg')
+  await expect(logo).toHaveAttribute('src', '/assets/fmc-partner.jpg')
 })
 
 test('keeps the Logout action visible against the dark sidebar', async ({ page }) => {

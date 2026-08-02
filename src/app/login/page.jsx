@@ -16,8 +16,8 @@ export default async function LoginPage({ searchParams }) {
 
   return (
     <main className="login-page">
-      <section className="login-brand" aria-label="ARC farm intelligence">
-        <img src="/assets/arc-farm-intelligence.svg" alt="Arc farm intelligence" />
+      <section className="login-brand" aria-label="FMC Partner">
+        <img src="/assets/fmc-partner.jpg" alt="FMC Partner — Growing Together" />
         <div>
           <p>Farm operations, made clearer.</p>
           <span>Administration portal</span>

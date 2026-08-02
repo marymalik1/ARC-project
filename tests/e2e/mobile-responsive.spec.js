@@ -5,8 +5,8 @@ test.use({ viewport: { width: 390, height: 844 } })
 test('reflows User Management into labeled dealer cards', async ({ page }) => {
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'Open menu' }).click()
-  await expect(page.getByRole('img', { name: 'Arc farm intelligence' })).toBeVisible()
+  await page.getByRole('button', { name: 'Toggle menu' }).click()
+  await expect(page.getByRole('img', { name: 'FMC Partner — Growing Together' })).toBeVisible()
 
   const sidebar = page.getByRole('complementary')
   await expect(sidebar).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)')

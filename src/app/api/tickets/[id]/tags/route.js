@@ -1,10 +1,18 @@
 import { NextResponse } from 'next/server'
+import { CAPABILITIES } from '../../../../../lib/permissions'
+import { requirePermission } from '../../../../../lib/require-permission'
 import { toggleTicketTag } from '../../../../../lib/ticket-repository'
 
 export const runtime = 'nodejs'
 
 export async function POST(request, context) {
   try {
+    const { response: denied } = await requirePermission(CAPABILITIES.CARE_MANAGE)
+
+    if (denied) {
+      return denied
+    }
+
     const { id } = await context.params
     const body = await request.json()
     const tag = String(body?.tag ?? '').trim()

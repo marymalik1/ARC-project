@@ -4,14 +4,23 @@ export const emptyFilters = Object.freeze({
   region: 'All Regions',
   zone: 'All Zones',
   territory: 'All Territories',
+  verification: 'All Accounts',
   query: '',
 })
 
 export const ANY_REGION = emptyFilters.region
 export const ANY_ZONE = emptyFilters.zone
 export const ANY_TERRITORY = emptyFilters.territory
+export const ANY_VERIFICATION = emptyFilters.verification
 
-export const DEFAULT_PAGE_SIZE = 10
+// Surfaces the queue of self-registrations waiting on an administrator.
+export const verificationOptions = Object.freeze([
+  ANY_VERIFICATION,
+  'Pending verification',
+  'Verified',
+])
+
+export const DEFAULT_PAGE_SIZE = 6
 export const MAX_PAGE_SIZE = 500
 
 export const statColumns = Object.freeze([
@@ -36,6 +45,23 @@ export const emptyFacets = Object.freeze({
 
 const validStatuses = new Set(['Active', 'Inactive'])
 
+// Roles an account can hold. "Verified" is tracked separately from status, so an
+// account can be Verified + Inactive.
+export const dealerRoles = Object.freeze([
+  'Dealer',
+  'Analyst',
+  'Accounts',
+  'Sales',
+  'Customer Support',
+  'Management',
+])
+
+const validRoles = new Set(dealerRoles)
+
+// Lives here rather than in password.js so client components can read it —
+// password.js imports node:crypto and must never reach the browser bundle.
+export const MIN_PASSWORD_LENGTH = 8
+
 function includesIgnoreCase(value, filter) {
   return String(value).toLowerCase().includes(String(filter).trim().toLowerCase())
 }
@@ -47,6 +73,7 @@ export function normalizeFilters(input) {
     region: String(input?.region ?? '').trim() || ANY_REGION,
     zone: String(input?.zone ?? '').trim() || ANY_ZONE,
     territory: String(input?.territory ?? '').trim() || ANY_TERRITORY,
+    verification: String(input?.verification ?? '').trim() || ANY_VERIFICATION,
     query: String(input?.query ?? '').trim(),
   }
 }
@@ -75,6 +102,7 @@ export function filtersToSearchParams(filters, page, pageSize) {
   if (values.region !== ANY_REGION) params.set('region', values.region)
   if (values.zone !== ANY_ZONE) params.set('zone', values.zone)
   if (values.territory !== ANY_TERRITORY) params.set('territory', values.territory)
+  if (values.verification !== ANY_VERIFICATION) params.set('verification', values.verification)
   if (values.query) params.set('q', values.query)
   params.set('page', String(normalizePage(page)))
   params.set('pageSize', String(normalizePageSize(pageSize)))
@@ -91,12 +119,17 @@ export function filterDealers(dealers, filters) {
       includesIgnoreCase(dealer.code, values.query) ||
       includesIgnoreCase(dealer.name, values.query)
 
+    const verificationMatches =
+      values.verification === ANY_VERIFICATION ||
+      (values.verification === 'Verified' ? dealer.verified === true : dealer.verified !== true)
+
     return (
       includesIgnoreCase(dealer.code, values.code) &&
       includesIgnoreCase(dealer.name, values.name) &&
       (values.region === ANY_REGION || dealer.region === values.region) &&
       (values.zone === ANY_ZONE || dealer.zone === values.zone) &&
       (values.territory === ANY_TERRITORY || dealer.territory === values.territory) &&
+      verificationMatches &&
       queryMatches
     )
   })
@@ -168,6 +201,12 @@ export function validateDealer(input) {
     zone: String(input?.zone ?? '').trim(),
     territory: String(input?.territory ?? '').trim(),
     status: String(input?.status ?? '').trim(),
+    email: String(input?.email ?? '').trim(),
+    storeCode: String(input?.storeCode ?? '').trim(),
+    role: String(input?.role ?? '').trim(),
+    verified: input?.verified === true || input?.verified === 'true',
+    // Not trimmed — leading/trailing spaces are legitimate password characters.
+    password: String(input?.password ?? ''),
   }
 
   if (!/^D\d{5}$/.test(value.code)) {
@@ -184,11 +223,47 @@ export function validateDealer(input) {
     return { ok: false, error: 'Status must be Active or Inactive.' }
   }
 
+  // The new fields stay optional so accounts created before this form shipped
+  // still validate, but anything supplied has to be well formed.
+  if (value.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email)) {
+    return { ok: false, error: 'Enter a valid email address.' }
+  }
+
+  if (value.role && !validRoles.has(value.role)) {
+    return { ok: false, error: 'Select a valid role.' }
+  }
+
+  // Blank means "leave the existing password alone", so only a supplied one is
+  // held to the length rule.
+  if (value.password && value.password.length < MIN_PASSWORD_LENGTH) {
+    return { ok: false, error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` }
+  }
+
   return { ok: true, value }
 }
 
+const dateFormat = new Intl.DateTimeFormat('en-GB', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+})
+
+// The spec's export asks for creation date *and* time, so this keeps the full
+// stamp alongside the date-only label the table already shows.
+const dateTimeFormat = new Intl.DateTimeFormat('en-GB', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  timeZone: 'UTC',
+})
+
 export function mapDealerRow(row) {
   const createdOn = toDate(row.created_on)
+  const createdAt = row.created_at ? toDate(row.created_at) : createdOn
 
   return {
     code: row.code,
@@ -197,11 +272,13 @@ export function mapDealerRow(row) {
     zone: row.zone,
     territory: row.territory,
     status: row.status,
-    createdOn: new Intl.DateTimeFormat('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      timeZone: 'UTC',
-    }).format(createdOn),
+    email: row.email ?? '',
+    storeCode: row.store_code ?? '',
+    role: row.role ?? '',
+    verified: row.verified === true,
+    verifiedBy: row.verified_by ?? '',
+    createdBy: row.created_by ?? '',
+    createdOn: dateFormat.format(createdOn),
+    createdAt: dateTimeFormat.format(createdAt),
   }
 }

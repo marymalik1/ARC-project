@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { buildPageItems } from '../lib/pagination'
+import { CAPABILITIES, can } from '../lib/permissions'
 import {
   EMPTY_TICKET_FILTERS,
   emptyTicketCounts,
@@ -31,6 +32,7 @@ import {
 } from '../lib/tickets'
 import { useTicketView } from '../lib/use-ticket-view'
 import Header from './Header'
+import { useShell } from './ShellState'
 import Sidebar from './Sidebar'
 import SyncStatus from './SyncStatus'
 
@@ -456,20 +458,27 @@ function Conversation({
         </div>
       </div>
 
-      <form className="message-composer" onSubmit={onSend}>
-        <button type="button" aria-label="Attach file"><Paperclip aria-hidden="true" /></button>
-        <button type="button" aria-label="Add emoji"><Smile aria-hidden="true" /></button>
-        <input
-          aria-label="Message"
-          placeholder="Type your message..."
-          value={draft}
-          onChange={(event) => onDraft(event.target.value)}
-        />
-        <button className="send-button" type="submit">
-          <Send aria-hidden="true" />
-          <span>Send</span>
-        </button>
-      </form>
+      {/* Read-only roles see the thread but get no composer. */}
+      {onSend ? (
+        <form className="message-composer" onSubmit={onSend}>
+          <button type="button" aria-label="Attach file"><Paperclip aria-hidden="true" /></button>
+          <button type="button" aria-label="Add emoji"><Smile aria-hidden="true" /></button>
+          <input
+            aria-label="Message"
+            placeholder="Type your message..."
+            value={draft}
+            onChange={(event) => onDraft(event.target.value)}
+          />
+          <button className="send-button" type="submit">
+            <Send aria-hidden="true" />
+            <span>Send</span>
+          </button>
+        </form>
+      ) : (
+        <p className="message-composer message-composer--readonly">
+          Your role has read-only access to conversations.
+        </p>
+      )}
     </section>
   )
 }
@@ -533,6 +542,10 @@ function TicketDetails({ ticket }) {
 }
 
 function TicketActions({ onStatus }) {
+  if (!onStatus) {
+    return null
+  }
+
   return (
     <DetailCard title="Actions">
       <div className="ticket-action-list">
@@ -567,11 +580,13 @@ function DetailRail({ ticket, onStatus }) {
   )
 }
 
-export default function CustomerCare({ initialView, notifications }) {
+export default function CustomerCare({ initialView, notifications, user }) {
   const [selectedId, setSelectedId] = useState(initialView.tickets[0]?.id ?? '')
   const [draft, setDraft] = useState('')
   const [draftFilters, setDraftFilters] = useState(() => ({ ...EMPTY_TICKET_FILTERS }))
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { collapsed, drawerOpen, animate, toggle, closeDrawer } = useShell()
+  // Management can read conversations but not reply to or close them.
+  const canManage = can(user, CAPABILITIES.CARE_MANAGE)
 
   const {
     view,
@@ -696,16 +711,21 @@ export default function CustomerCare({ initialView, notifications }) {
   }
 
   return (
-    <div className="app-shell customer-care-shell">
+    <div
+      className={`app-shell customer-care-shell ${collapsed ? 'app-shell--rail' : ''} ${animate ? 'app-shell--animate' : ''}`}
+    >
       <Sidebar
         activePage="customer-care"
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        open={drawerOpen}
+        onClose={closeDrawer}
+        user={user}
       />
       <div className="main-shell">
         <Header
-          onMenu={() => setSidebarOpen(true)}
+          onMenu={toggle}
+          menuExpanded={!collapsed}
           notifications={view.counts?.pending ?? notifications}
+          user={user}
         />
         <main className="customer-care-content">
           <div className="page-heading customer-care-heading">
@@ -750,10 +770,10 @@ export default function CustomerCare({ initialView, notifications }) {
               selectedTags={selectedTicket?.tags ?? []}
               availableTags={view.availableTags}
               onDraft={setDraft}
-              onSend={sendMessage}
-              onToggleTag={toggleTag}
+              onSend={canManage ? sendMessage : undefined}
+              onToggleTag={canManage ? toggleTag : undefined}
             />
-            <DetailRail ticket={selectedTicket} onStatus={changeStatus} />
+            <DetailRail ticket={selectedTicket} onStatus={canManage ? changeStatus : undefined} />
           </div>
         </main>
       </div>

@@ -6,23 +6,29 @@ import {
   emptyFilters,
   filtersToSearchParams,
 } from '../lib/dealers'
+import { CAPABILITIES, can } from '../lib/permissions'
 import { useDealerView } from '../lib/use-dealer-view'
 import AccountModal from './AccountModal'
 import DealersTable from './DealersTable'
 import Filters from './Filters'
 import Header from './Header'
+import { useShell } from './ShellState'
 import Sidebar from './Sidebar'
 import StatsGrid from './StatsGrid'
+import Toast from './Toast'
 import SyncStatus from './SyncStatus'
 
+// Columns and order of the exported file, matching the agreed header row.
 const csvColumns = [
-  ['code', 'Dealer Code'],
+  ['code', 'Store/Dealer Code'],
   ['name', 'Dealer Name'],
   ['region', 'Region'],
   ['zone', 'Zone'],
   ['territory', 'Territory'],
+  ['createdBy', 'Creator'],
+  ['createdAt', 'Date and time Created'],
   ['status', 'Status'],
-  ['createdOn', 'Created On'],
+  ['role', 'Role'],
 ]
 
 function toCsvCell(value) {
@@ -30,10 +36,15 @@ function toCsvCell(value) {
   return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
 }
 
-export default function UserManagement({ initialView }) {
+export default function UserManagement({ initialView, user }) {
   const [filters, setFilters] = useState(emptyFilters)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { collapsed, drawerOpen, animate, toggle, closeDrawer } = useShell()
   const [modal, setModal] = useState(null)
+  const [toast, setToast] = useState(null)
+  // Read-only roles get no write affordances. The API enforces this too — hiding
+  // the buttons just avoids offering actions that would 403.
+  const canManage = can(user, CAPABILITIES.USERS_MANAGE)
+  const canExport = can(user, CAPABILITIES.USERS_EXPORT)
 
   const {
     view,
@@ -58,6 +69,9 @@ export default function UserManagement({ initialView }) {
   const exportCsv = async () => {
     try {
       setError('')
+      // Announced before the request starts — a large export takes a moment, and
+      // the browser gives no sign anything is happening until the file lands.
+      setToast({ tone: 'busy', message: 'Exporting file…' })
       const params = filtersToSearchParams(appliedFilters, 1, MAX_PAGE_SIZE)
       const response = await fetch(`/api/dealers?${params}`, { cache: 'no-store' })
       const body = await response.json()
@@ -74,11 +88,18 @@ export default function UserManagement({ initialView }) {
       const url = URL.createObjectURL(blob)
       const anchor = document.createElement('a')
       anchor.href = url
-      anchor.download = 'arc-dealer-accounts.csv'
+      anchor.download = 'fmc-dealer-accounts.csv'
       anchor.click()
       URL.revokeObjectURL(url)
+
+      const count = body.dealers.length
+      setToast({
+        tone: 'success',
+        message: `Exported ${count} ${count === 1 ? 'account' : 'accounts'}.`,
+      })
     } catch (exportError) {
       setError(exportError.message)
+      setToast({ tone: 'error', message: exportError.message })
     }
   }
 
@@ -123,12 +144,16 @@ export default function UserManagement({ initialView }) {
   }
 
   return (
-    <div className="app-shell">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <div
+      className={`app-shell ${collapsed ? 'app-shell--rail' : ''} ${animate ? 'app-shell--animate' : ''}`}
+    >
+      <Sidebar open={drawerOpen} onClose={closeDrawer} user={user} />
       <div className="main-shell">
         <Header
-          onMenu={() => setSidebarOpen(true)}
+          onMenu={toggle}
+          menuExpanded={!collapsed}
           notifications={view.notifications ?? 0}
+          user={user}
         />
         <main className="content">
           <div className="page-heading">
@@ -147,8 +172,8 @@ export default function UserManagement({ initialView }) {
             onChange={changeFilter}
             onSearch={() => applyFilters(filters)}
             onClear={clearFilters}
-            onExport={exportCsv}
-            onCreate={() => setModal({ mode: 'create' })}
+            onExport={canExport ? exportCsv : undefined}
+            onCreate={canManage ? () => setModal({ mode: 'create' }) : undefined}
           />
           <DealersTable
             dealers={view.dealers}
@@ -156,8 +181,8 @@ export default function UserManagement({ initialView }) {
             page={view.page}
             pageSize={view.pageSize}
             onPageChange={goToPage}
-            onEdit={(dealer) => setModal({ mode: 'edit', dealer })}
-            onDelete={deleteDealer}
+            onEdit={canManage ? (dealer) => setModal({ mode: 'edit', dealer }) : undefined}
+            onDelete={canManage ? deleteDealer : undefined}
           />
           <p className="request-error" role="alert" aria-live="polite">{error}</p>
         </main>
@@ -168,8 +193,13 @@ export default function UserManagement({ initialView }) {
           facets={view.facets}
           onClose={() => setModal(null)}
           onSave={saveDealer}
+          onDelete={(code) => {
+            setModal(null)
+            deleteDealer(code)
+          }}
         />
       )}
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   )
 }

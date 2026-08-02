@@ -58,6 +58,9 @@ create policy "authenticated users can delete dealers"
 grant select, insert, update, delete on public.dealers to authenticated;
 grant usage, select on sequence public.dealers_id_seq to authenticated;
 
+-- created_at is set explicitly rather than defaulting to now(): the export shows
+-- "Date and time Created" from it while the table shows created_on, and letting
+-- it default made the same row read as two different dates.
 insert into public.dealers (
   code,
   name,
@@ -65,14 +68,15 @@ insert into public.dealers (
   zone,
   territory,
   status,
-  created_on
+  created_on,
+  created_at
 )
 values
-  ('D00123', 'Ali Traders', 'Lahore', 'North Zone', 'Lahore City', 'Active', '2025-05-18'),
-  ('D00124', 'Khan Associates', 'Karachi', 'South Zone', 'Karachi South', 'Active', '2025-05-18'),
-  ('D00125', 'Usman Enterprises', 'Islamabad', 'Central Zone', 'Islamabad East', 'Inactive', '2025-05-17'),
-  ('D00126', 'Raza Enterprises', 'Lahore', 'North Zone', 'Sheikhupura', 'Active', '2025-05-17'),
-  ('D00127', 'Bilal & Sons', 'Peshawar', 'West Zone', 'Peshawar City', 'Inactive', '2025-05-16')
+  ('D00123', 'Ali Traders', 'Lahore', 'North Zone', 'Lahore City', 'Active', '2025-05-18', '2025-05-18 09:15:00+05'),
+  ('D00124', 'Khan Associates', 'Karachi', 'South Zone', 'Karachi South', 'Active', '2025-05-18', '2025-05-18 11:40:00+05'),
+  ('D00125', 'Usman Enterprises', 'Islamabad', 'Central Zone', 'Islamabad East', 'Inactive', '2025-05-17', '2025-05-17 14:05:00+05'),
+  ('D00126', 'Raza Enterprises', 'Lahore', 'North Zone', 'Sheikhupura', 'Active', '2025-05-17', '2025-05-17 16:20:00+05'),
+  ('D00127', 'Bilal & Sons', 'Peshawar', 'West Zone', 'Peshawar City', 'Inactive', '2025-05-16', '2025-05-16 10:00:00+05')
 on conflict (code) do update
 set name = excluded.name,
     region = excluded.region,
@@ -80,4 +84,5 @@ set name = excluded.name,
     territory = excluded.territory,
     status = excluded.status,
     created_on = excluded.created_on,
+    created_at = excluded.created_at,
     updated_at = now();

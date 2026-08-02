@@ -7,17 +7,50 @@ test('redirects unauthenticated dashboard requests to login', async ({ page }) =
 })
 
 test('allows a valid demo session to open the dashboard', async ({ context, page }) => {
+  // Sessions are signed, so the cookie has to come from the sign-in route rather
+  // than being written by hand.
+  await context.request.post('/api/demo-auth/login', {
+    form: { email: 'admin@arcfarm.com', password: 'Arc@123' },
+    maxRedirects: 0,
+  })
+
+  await page.goto('/')
+
+  await expect(page.getByRole('heading', { name: 'User Management' })).toBeVisible()
+})
+
+test('refuses a forged or tampered session cookie', async ({ context, page }) => {
   await context.addCookies([{
     name: 'arc_demo_session',
-    value: 'authenticated',
+    value: '1.99999999999999.forged-signature',
     url: 'http://127.0.0.1:3000',
     httpOnly: true,
     sameSite: 'Lax',
   }])
 
   await page.goto('/')
+  await expect(page).toHaveURL(/\/login$/)
 
-  await expect(page.getByRole('heading', { name: 'User Management' })).toBeVisible()
+  // A real token with the user id swapped must fail its signature too, or anyone
+  // could sign in as any account by editing one number.
+  const response = await context.request.post('/api/demo-auth/login', {
+    form: { email: 'admin@arcfarm.com', password: 'Arc@123' },
+    maxRedirects: 0,
+  })
+  const issued = /arc_demo_session=([^;]+)/.exec(response.headers()['set-cookie'])[1]
+  const [, expiresAt, signature] = issued.split('.')
+
+  await context.clearCookies()
+  await context.addCookies([{
+    name: 'arc_demo_session',
+    value: `999.${expiresAt}.${signature}`,
+    url: 'http://127.0.0.1:3000',
+    httpOnly: true,
+    sameSite: 'Lax',
+  }])
+
+  await page.goto('/')
+  await expect(page).toHaveURL(/\/login$/)
 })
 
 test('rejects invalid demo credentials without creating a session', async ({ request }) => {
@@ -46,9 +79,13 @@ test('creates the constrained demo session for valid credentials', async ({ requ
 
   expect(response.status()).toBe(303)
   expect(new URL(response.headers().location).pathname).toBe('/')
-  expect(response.headers()['set-cookie']).toContain('arc_demo_session=authenticated')
-  expect(response.headers()['set-cookie']).toContain('HttpOnly')
-  expect(response.headers()['set-cookie']).toContain('SameSite=lax')
+
+  const cookie = response.headers()['set-cookie']
+  // "<userId>.<expiresAt>.<hmac>" — never a guessable constant.
+  expect(cookie).toMatch(/arc_demo_session=\d+\.\d+\.[\w-]+/)
+  expect(cookie).not.toContain('arc_demo_session=authenticated')
+  expect(cookie).toContain('HttpOnly')
+  expect(cookie).toContain('SameSite=lax')
 })
 
 test('clears the demo session on logout', async ({ request }) => {
@@ -68,7 +105,7 @@ test('clears the demo session on logout', async ({ request }) => {
 test('signs in with the sample credentials', async ({ page }) => {
   await page.goto('/login')
 
-  await expect(page.getByRole('img', { name: 'Arc farm intelligence' })).toBeVisible()
+  await expect(page.getByRole('img', { name: 'FMC Partner — Growing Together' })).toBeVisible()
   await expect(page.getByText('admin@arcfarm.com')).toBeVisible()
   await expect(page.getByText('Arc@123')).toBeVisible()
 
@@ -108,13 +145,10 @@ test('toggles password visibility', async ({ page }) => {
 })
 
 test('logs out and clears access to the dashboard', async ({ context, page }) => {
-  await context.addCookies([{
-    name: 'arc_demo_session',
-    value: 'authenticated',
-    url: 'http://127.0.0.1:3000',
-    httpOnly: true,
-    sameSite: 'Lax',
-  }])
+  await context.request.post('/api/demo-auth/login', {
+    form: { email: 'admin@arcfarm.com', password: 'Arc@123' },
+    maxRedirects: 0,
+  })
   await page.goto('/')
   await page.getByRole('button', { name: 'Logout' }).click()
 

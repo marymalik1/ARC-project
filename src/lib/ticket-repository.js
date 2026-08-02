@@ -4,6 +4,7 @@ import {
   initialTicketRows,
 } from '../data/tickets'
 import { getPool, hasDatabase } from './database'
+import { NOTIFICATION_LIMIT } from './notifications'
 import {
   EMPTY_TICKET_FILTERS,
   applyTicketFilters,
@@ -274,6 +275,38 @@ export async function getPendingTicketCount() {
   )
 
   return result.rows[0]?.pending ?? 0
+}
+
+/**
+ * The pending chats behind the header bell, newest first — the same rows the
+ * Customer Care inbox opens on, so the bell never announces answered work.
+ */
+export async function listPendingTicketNotices(limit = NOTIFICATION_LIMIT) {
+  const toNotice = (row) => ({
+    id: row.id,
+    subject: row.subject,
+    customerName: row.customer_name,
+    createdAt: new Date(row.created_at).toISOString(),
+  })
+
+  if (!hasDatabase()) {
+    return getMemoryStore().tickets
+      .filter((row) => row.status === 'Pending')
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, limit)
+      .map(toNotice)
+  }
+
+  const result = await getPool().query(
+    `select id, subject, customer_name, created_at
+     from public.support_tickets
+     where status = 'Pending'
+     order by created_at desc, id desc
+     limit $1`,
+    [limit],
+  )
+
+  return result.rows.map(toNotice)
 }
 
 export async function addTicketMessage(ticketId, body, sender = 'agent') {

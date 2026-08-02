@@ -1,4 +1,7 @@
+import { redirect } from 'next/navigation'
 import CustomerCare from '../../components/CustomerCare'
+import { getCurrentUser } from '../../lib/current-user'
+import { CAPABILITIES, can, landingPathFor } from '../../lib/permissions'
 import { emptyTicketsView, getTicketsView } from '../../lib/ticket-repository'
 
 export const dynamic = 'force-dynamic'
@@ -9,6 +12,12 @@ export const metadata = {
 }
 
 export default async function CustomerCarePage() {
+  const user = await getCurrentUser()
+
+  if (!can(user, CAPABILITIES.CARE_VIEW)) {
+    redirect(landingPathFor(user))
+  }
+
   let initialView
 
   try {
@@ -23,6 +32,7 @@ export default async function CustomerCarePage() {
     <CustomerCare
       initialView={initialView}
       notifications={initialView.counts.pending}
+      user={user}
     />
   )
 }

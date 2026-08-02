@@ -1,8 +1,11 @@
 import { initialDealerRows } from '../data/dealers'
 import { getPool, hasDatabase } from './database'
+import { NOTIFICATION_LIMIT } from './notifications'
+import { hashPassword } from './password'
 import {
   ANY_REGION,
   ANY_TERRITORY,
+  ANY_VERIFICATION,
   ANY_ZONE,
   calculateStats,
   collectFacets,
@@ -19,7 +22,10 @@ import {
 
 const globalDatabase = globalThis
 
-const dealerColumns = 'code, name, region, zone, territory, status, created_on'
+// password_hash is deliberately absent: every read path returns these columns, so
+// leaving it out keeps the hash off the wire entirely.
+const dealerColumns = `code, name, region, zone, territory, status, created_on, created_at,
+  email, store_code, role, verified, verified_by, verified_at, created_by`
 
 function getMemoryDealers() {
   if (!globalDatabase.arcMemoryDealerRows) {
@@ -52,6 +58,11 @@ function buildFilterClause(filters, startIndex = 1) {
   if (values.region !== ANY_REGION) add('region = $$', values.region)
   if (values.zone !== ANY_ZONE) add('zone = $$', values.zone)
   if (values.territory !== ANY_TERRITORY) add('territory = $$', values.territory)
+
+  if (values.verification !== ANY_VERIFICATION) {
+    conditions.push(values.verification === 'Verified' ? 'verified' : 'not verified')
+  }
+
   if (values.query) {
     conditions.push(`(code ilike $${index} or name ilike $${index})`)
     params.push(`%${values.query}%`)
@@ -182,7 +193,43 @@ export async function listDealers(options) {
   return view.dealers
 }
 
-export async function createDealer(dealer) {
+/**
+ * The verification queue behind the header bell, newest first. Self-registrations
+ * land unverified, so an unverified row is exactly an account waiting on review.
+ */
+export async function listUnverifiedDealerNotices(limit = NOTIFICATION_LIMIT) {
+  // Rows created before created_at existed only carry the date they were made.
+  const createdAt = (row) => new Date(row.created_at ?? row.created_on)
+  const toNotice = (row) => ({
+    code: row.code,
+    name: row.name,
+    createdAt: createdAt(row).toISOString(),
+  })
+
+  if (!hasDatabase()) {
+    return getMemoryDealers()
+      .filter((row) => row.verified !== true)
+      .sort((a, b) => createdAt(b) - createdAt(a))
+      .slice(0, limit)
+      .map(toNotice)
+  }
+
+  const result = await getPool().query(
+    `select code, name, created_at, created_on
+     from public.dealers
+     where not verified
+     order by created_at desc, code asc
+     limit $1`,
+    [limit],
+  )
+
+  return result.rows.map(toNotice)
+}
+
+export async function createDealer(dealer, actor = '') {
+  const verifiedAt = dealer.verified ? new Date().toISOString() : null
+  const passwordHash = dealer.password ? await hashPassword(dealer.password) : null
+
   if (!hasDatabase()) {
     const memoryDealers = getMemoryDealers()
 
@@ -192,15 +239,29 @@ export async function createDealer(dealer) {
       throw error
     }
 
-    const created = { ...dealer, created_on: today() }
+    const created = {
+      ...dealer,
+      password: undefined,
+      password_hash: passwordHash,
+      store_code: dealer.storeCode,
+      created_on: today(),
+      created_at: new Date().toISOString(),
+      created_by: actor,
+      verified_by: dealer.verified ? actor : '',
+      verified_at: verifiedAt,
+    }
     memoryDealers.unshift(created)
     memoryDealers.sort((a, b) => a.code.localeCompare(b.code))
     return mapDealerRow(created)
   }
 
   const result = await getPool().query(`
-    insert into public.dealers (code, name, region, zone, territory, status)
-    values ($1, $2, $3, $4, $5, $6)
+    insert into public.dealers (
+      code, name, region, zone, territory, status,
+      email, store_code, role, verified, verified_by, verified_at, created_by,
+      password_hash
+    )
+    values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     returning ${dealerColumns}
   `, [
     dealer.code,
@@ -209,12 +270,23 @@ export async function createDealer(dealer) {
     dealer.zone,
     dealer.territory,
     dealer.status,
+    dealer.email || null,
+    dealer.storeCode || null,
+    dealer.role || null,
+    dealer.verified,
+    dealer.verified ? actor : null,
+    verifiedAt,
+    actor || null,
+    passwordHash,
   ])
 
   return mapDealerRow(result.rows[0])
 }
 
-export async function updateDealer(code, dealer) {
+export async function updateDealer(code, dealer, actor = '') {
+  // Blank means "keep the current password" rather than "clear it".
+  const passwordHash = dealer.password ? await hashPassword(dealer.password) : null
+
   if (!hasDatabase()) {
     const memoryDealers = getMemoryDealers()
     const index = memoryDealers.findIndex((item) => item.code === code)
@@ -223,15 +295,30 @@ export async function updateDealer(code, dealer) {
       return null
     }
 
+    const previous = memoryDealers[index]
+    const newlyVerified = dealer.verified && !previous.verified
+
     memoryDealers[index] = {
-      ...memoryDealers[index],
+      ...previous,
       ...dealer,
       code,
-      created_on: memoryDealers[index].created_on,
+      password: undefined,
+      password_hash: passwordHash ?? previous.password_hash,
+      store_code: dealer.storeCode,
+      created_on: previous.created_on,
+      created_at: previous.created_at,
+      created_by: previous.created_by,
+      verified_by: dealer.verified ? (newlyVerified ? actor : previous.verified_by) : '',
+      verified_at: dealer.verified
+        ? (newlyVerified ? new Date().toISOString() : previous.verified_at)
+        : null,
     }
     return mapDealerRow(memoryDealers[index])
   }
 
+  // verified_by / verified_at are stamped only on the false -> true transition,
+  // so later edits keep naming whoever actually did the verifying. Un-verifying
+  // clears them rather than leaving a stale name behind.
   const result = await getPool().query(`
     update public.dealers
     set name = $2,
@@ -239,6 +326,21 @@ export async function updateDealer(code, dealer) {
         zone = $4,
         territory = $5,
         status = $6,
+        email = $7,
+        store_code = $8,
+        role = $9,
+        verified = $10,
+        verified_by = case
+          when $10 and not verified then $11
+          when not $10 then null
+          else verified_by
+        end,
+        verified_at = case
+          when $10 and not verified then now()
+          when not $10 then null
+          else verified_at
+        end,
+        password_hash = coalesce($12, password_hash),
         updated_at = now()
     where code = $1
     returning ${dealerColumns}
@@ -249,6 +351,12 @@ export async function updateDealer(code, dealer) {
     dealer.zone,
     dealer.territory,
     dealer.status,
+    dealer.email || null,
+    dealer.storeCode || null,
+    dealer.role || null,
+    dealer.verified,
+    actor || null,
+    passwordHash,
   ])
 
   return result.rowCount ? mapDealerRow(result.rows[0]) : null
