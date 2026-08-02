@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  DEFAULT_PAGE_SIZE,
   calculateStats,
   collectFacets,
   filterDealers,
@@ -130,8 +131,10 @@ test('paginate returns the requested slice and clamps past the last page', () =>
 test('totalPages and normalizePageSize guard the pagination inputs', () => {
   assert.equal(totalPages(0, 10), 1)
   assert.equal(totalPages(1250, 10), 125)
-  assert.equal(normalizePageSize('abc'), 10)
-  assert.equal(normalizePageSize('0'), 10)
+  // Anything unusable falls back to the default rather than to a literal, so
+  // changing the page size does not silently break these.
+  assert.equal(normalizePageSize('abc'), DEFAULT_PAGE_SIZE)
+  assert.equal(normalizePageSize('0'), DEFAULT_PAGE_SIZE)
   assert.equal(normalizePageSize('9000'), 500)
 })
 

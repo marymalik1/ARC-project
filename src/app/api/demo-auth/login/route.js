@@ -1,20 +1,18 @@
 import { NextResponse } from 'next/server'
 
-import {
-  SESSION_COOKIE,
-  SESSION_VALUE,
-  buildDemoRedirectUrl,
-  demoCookieOptions,
-  validateDemoCredentials,
-} from '../../../../lib/demo-auth'
+import { buildDemoRedirectUrl } from '../../../../lib/demo-auth'
+import { SESSION_COOKIE, createSessionToken, sessionCookieOptions } from '../../../../lib/session'
+import { authenticateUser } from '../../../../lib/users'
+
+// Reads the database and hashes with node:crypto, so it cannot run on Edge.
+export const runtime = 'nodejs'
 
 export async function POST(request) {
   try {
     const form = await request.formData()
-    const email = form.get('email')
-    const password = form.get('password')
+    const user = await authenticateUser(form.get('email'), form.get('password'))
 
-    if (!validateDemoCredentials(email, password)) {
+    if (!user) {
       return NextResponse.redirect(buildDemoRedirectUrl(request, '/login?error=invalid'), {
         status: 303,
       })
@@ -23,7 +21,7 @@ export async function POST(request) {
     const response = NextResponse.redirect(buildDemoRedirectUrl(request, '/'), {
       status: 303,
     })
-    response.cookies.set(SESSION_COOKIE, SESSION_VALUE, demoCookieOptions())
+    response.cookies.set(SESSION_COOKIE, await createSessionToken(user.id), sessionCookieOptions())
     return response
   } catch {
     return NextResponse.redirect(buildDemoRedirectUrl(request, '/login?error=unavailable'), {

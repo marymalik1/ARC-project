@@ -1,6 +1,7 @@
 import './globals.css'
 import './mobile.css'
 import './login.css'
+import { ShellProvider } from '../components/ShellState'
 
 export const metadata = {
   title: 'ARC Administration',
@@ -10,7 +11,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <ShellProvider>{children}</ShellProvider>
+      </body>
     </html>
   )
 }

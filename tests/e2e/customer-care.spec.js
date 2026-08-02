@@ -102,6 +102,6 @@ test('keeps customer care and logout controls usable on mobile', async ({ page }
   await expect(page.getByRole('button', { name: 'Search' })).toBeVisible()
   await expect(page.getByText('Unable to login to the ARC portal').first()).toBeVisible()
 
-  await page.getByRole('button', { name: 'Open menu' }).click()
+  await page.getByRole('button', { name: 'Toggle menu' }).click()
   await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible()
 })

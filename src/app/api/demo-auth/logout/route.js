@@ -1,17 +1,14 @@
 import { NextResponse } from 'next/server'
 
-import {
-  SESSION_COOKIE,
-  buildDemoRedirectUrl,
-  demoCookieOptions,
-} from '../../../../lib/demo-auth'
+import { buildDemoRedirectUrl } from '../../../../lib/demo-auth'
+import { SESSION_COOKIE, sessionCookieOptions } from '../../../../lib/session'
 
 export async function POST(request) {
   const response = NextResponse.redirect(buildDemoRedirectUrl(request, '/login'), {
     status: 303,
   })
   response.cookies.set(SESSION_COOKIE, '', {
-    ...demoCookieOptions(),
+    ...sessionCookieOptions(),
     maxAge: 0,
   })
   return response

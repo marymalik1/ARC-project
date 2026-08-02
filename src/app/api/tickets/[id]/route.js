@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { CAPABILITIES } from '../../../../lib/permissions'
+import { requirePermission } from '../../../../lib/require-permission'
 import { setTicketStatus } from '../../../../lib/ticket-repository'
 import { validateTicketStatus } from '../../../../lib/tickets'
 
@@ -6,6 +8,12 @@ export const runtime = 'nodejs'
 
 export async function PATCH(request, context) {
   try {
+    const { response: denied } = await requirePermission(CAPABILITIES.CARE_MANAGE)
+
+    if (denied) {
+      return denied
+    }
+
     const { id } = await context.params
     const body = await request.json()
     const validation = validateTicketStatus(String(body?.status ?? '').trim())

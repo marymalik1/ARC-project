@@ -4,6 +4,8 @@ import {
   getDealersView,
 } from '../../../lib/dealer-repository'
 import { validateDealer } from '../../../lib/dealers'
+import { CAPABILITIES } from '../../../lib/permissions'
+import { requirePermission } from '../../../lib/require-permission'
 import { getPendingTicketCount } from '../../../lib/ticket-repository'
 
 export const runtime = 'nodejs'
@@ -17,6 +19,7 @@ export function viewFromSearchParams(searchParams) {
       region: searchParams.get('region') ?? '',
       zone: searchParams.get('zone') ?? '',
       territory: searchParams.get('territory') ?? '',
+      verification: searchParams.get('verification') ?? '',
       query: searchParams.get('q') ?? '',
     },
     page: searchParams.get('page'),
@@ -26,6 +29,12 @@ export function viewFromSearchParams(searchParams) {
 
 export async function GET(request) {
   try {
+    const { response: denied } = await requirePermission(CAPABILITIES.USERS_VIEW)
+
+    if (denied) {
+      return denied
+    }
+
     const { searchParams } = new URL(request.url)
     const [view, notifications] = await Promise.all([
       getDealersView(viewFromSearchParams(searchParams)),
@@ -45,6 +54,12 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const { user: actor, response: denied } = await requirePermission(CAPABILITIES.USERS_MANAGE)
+
+    if (denied) {
+      return denied
+    }
+
     const validation = validateDealer(await request.json())
 
     if (!validation.ok) {
@@ -54,7 +69,7 @@ export async function POST(request) {
       )
     }
 
-    const dealer = await createDealer(validation.value)
+    const dealer = await createDealer(validation.value, actor.name)
     return NextResponse.json({ dealer }, { status: 201 })
   } catch (error) {
     const status = error.code === '23505' ? 409 : 500

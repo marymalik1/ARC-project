@@ -4,11 +4,19 @@ import {
   updateDealer,
 } from '../../../../lib/dealer-repository'
 import { validateDealer } from '../../../../lib/dealers'
+import { CAPABILITIES } from '../../../../lib/permissions'
+import { requirePermission } from '../../../../lib/require-permission'
 
 export const runtime = 'nodejs'
 
 export async function PUT(request, context) {
   try {
+    const { user: actor, response: denied } = await requirePermission(CAPABILITIES.USERS_MANAGE)
+
+    if (denied) {
+      return denied
+    }
+
     const { code } = await context.params
     const validation = validateDealer({
       ...await request.json(),
@@ -22,7 +30,7 @@ export async function PUT(request, context) {
       )
     }
 
-    const dealer = await updateDealer(code, validation.value)
+    const dealer = await updateDealer(code, validation.value, actor.name)
 
     if (!dealer) {
       return NextResponse.json(
@@ -42,6 +50,12 @@ export async function PUT(request, context) {
 
 export async function DELETE(_request, context) {
   try {
+    const { response: denied } = await requirePermission(CAPABILITIES.USERS_MANAGE)
+
+    if (denied) {
+      return denied
+    }
+
     const { code } = await context.params
     const deleted = await deleteDealer(code)
 
