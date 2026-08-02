@@ -66,7 +66,10 @@ test('serves chats, tab counts, filter options, and tags from the database', asy
   expect(body.total).toBe(body.counts.all)
   expect(body.facets.chatTypes).toContain('Login Issue')
   expect(body.availableTags.length).toBeGreaterThan(0)
-  expect(body.tickets[0].messages.length).toBeGreaterThan(0)
+  // Not tickets[0]: chats are newest-first, and a chat opened with the New Chat
+  // button starts with no messages at all. Threads still have to be served, so
+  // assert that against a chat that has one rather than whichever is newest.
+  expect(body.tickets.some((ticket) => ticket.messages.length > 0)).toBe(true)
   expect(body.syncedAt).toBeTruthy()
 })
 

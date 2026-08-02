@@ -4,6 +4,7 @@ export const emptyFilters = Object.freeze({
   region: 'All Regions',
   zone: 'All Zones',
   territory: 'All Territories',
+  status: 'All Statuses',
   verification: 'All Accounts',
   query: '',
 })
@@ -11,7 +12,12 @@ export const emptyFilters = Object.freeze({
 export const ANY_REGION = emptyFilters.region
 export const ANY_ZONE = emptyFilters.zone
 export const ANY_TERRITORY = emptyFilters.territory
+export const ANY_STATUS = emptyFilters.status
 export const ANY_VERIFICATION = emptyFilters.verification
+
+// Active/Inactive is whether the account may be used; verification is whether an
+// administrator has reviewed it. They are independent, so they filter separately.
+export const statusOptions = Object.freeze([ANY_STATUS, 'Active', 'Inactive'])
 
 // Surfaces the queue of self-registrations waiting on an administrator.
 export const verificationOptions = Object.freeze([
@@ -73,6 +79,7 @@ export function normalizeFilters(input) {
     region: String(input?.region ?? '').trim() || ANY_REGION,
     zone: String(input?.zone ?? '').trim() || ANY_ZONE,
     territory: String(input?.territory ?? '').trim() || ANY_TERRITORY,
+    status: String(input?.status ?? '').trim() || ANY_STATUS,
     verification: String(input?.verification ?? '').trim() || ANY_VERIFICATION,
     query: String(input?.query ?? '').trim(),
   }
@@ -102,6 +109,7 @@ export function filtersToSearchParams(filters, page, pageSize) {
   if (values.region !== ANY_REGION) params.set('region', values.region)
   if (values.zone !== ANY_ZONE) params.set('zone', values.zone)
   if (values.territory !== ANY_TERRITORY) params.set('territory', values.territory)
+  if (values.status !== ANY_STATUS) params.set('status', values.status)
   if (values.verification !== ANY_VERIFICATION) params.set('verification', values.verification)
   if (values.query) params.set('q', values.query)
   params.set('page', String(normalizePage(page)))
@@ -129,6 +137,7 @@ export function filterDealers(dealers, filters) {
       (values.region === ANY_REGION || dealer.region === values.region) &&
       (values.zone === ANY_ZONE || dealer.zone === values.zone) &&
       (values.territory === ANY_TERRITORY || dealer.territory === values.territory) &&
+      (values.status === ANY_STATUS || dealer.status === values.status) &&
       verificationMatches &&
       queryMatches
     )
@@ -227,6 +236,11 @@ export function validateDealer(input) {
   // still validate, but anything supplied has to be well formed.
   if (value.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email)) {
     return { ok: false, error: 'Enter a valid email address.' }
+  }
+
+  // Digits only — no letters, spaces or punctuation.
+  if (value.storeCode && !/^\d+$/.test(value.storeCode)) {
+    return { ok: false, error: 'Store code must contain digits only.' }
   }
 
   if (value.role && !validRoles.has(value.role)) {

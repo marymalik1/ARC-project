@@ -9,6 +9,7 @@ export const initialDealerRows = [
     territory: 'Lahore City',
     status: 'Active',
     created_on: '2025-05-18',
+    verified: true,
   },
   {
     code: 'D00124',
@@ -18,6 +19,7 @@ export const initialDealerRows = [
     territory: 'Karachi South',
     status: 'Active',
     created_on: '2025-05-18',
+    verified: true,
   },
   {
     code: 'D00125',
@@ -27,6 +29,7 @@ export const initialDealerRows = [
     territory: 'Islamabad East',
     status: 'Inactive',
     created_on: '2025-05-17',
+    verified: true,
   },
   {
     code: 'D00126',
@@ -36,6 +39,7 @@ export const initialDealerRows = [
     territory: 'Sheikhupura',
     status: 'Active',
     created_on: '2025-05-17',
+    verified: true,
   },
   {
     code: 'D00127',
@@ -45,5 +49,6 @@ export const initialDealerRows = [
     territory: 'Peshawar City',
     status: 'Inactive',
     created_on: '2025-05-16',
+    verified: true,
   },
 ]

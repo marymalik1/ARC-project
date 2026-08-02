@@ -1,3 +1,4 @@
+import { initialDealerRows } from '../data/dealers'
 import {
   initialMessageRows,
   initialTagRows,
@@ -28,6 +29,35 @@ const ticketColumns = `
   customer_location, customer_phone, customer_email, created_at
 `
 
+// attachment_path is deliberately absent from every read the browser sees: the
+// object key is a server-side detail, and messages are addressed by id instead.
+const messageColumns = `
+  id, ticket_id, sender, body, sent_at,
+  attachment_name, attachment_type, attachment_size
+`
+
+/**
+ * Customer Care only surfaces chats whose dealer is both verified and active.
+ * An unverified self-registration or a deactivated dealer must not appear in the
+ * inbox, its counts, its filter options or the header bell — so every read path
+ * below carries this, not just the list query.
+ */
+const VISIBLE_DEALER_SQL = `exists (
+  select 1 from public.dealers d
+  where d.code = public.support_tickets.customer_dealer_code
+    and d.verified
+    and d.status = 'Active'
+)`
+
+// The in-memory fallback has no join, so it matches on the seed rows directly.
+function visibleDealerCodes() {
+  return new Set(
+    initialDealerRows
+      .filter((row) => row.verified === true && row.status === 'Active')
+      .map((row) => row.code),
+  )
+}
+
 function getMemoryStore() {
   if (!globalStore.arcMemorySupport) {
     globalStore.arcMemorySupport = {
@@ -42,7 +72,9 @@ function getMemoryStore() {
 }
 
 function memoryTickets(store, reference = new Date()) {
-  return store.tickets.map((row) => mapTicketRow(row, {
+  const visible = visibleDealerCodes()
+
+  return store.tickets.filter((row) => visible.has(row.customer_dealer_code)).map((row) => mapTicketRow(row, {
     messages: store.messages
       .filter((message) => message.ticket_id === row.id)
       .sort((a, b) => new Date(a.sent_at) - new Date(b.sent_at)),
@@ -56,7 +88,7 @@ function memoryTickets(store, reference = new Date()) {
 // Builds the `where` clause shared by the page query and its count.
 function buildTicketFilterClause(filters, startIndex = 1) {
   const values = normalizeTicketFilters(filters)
-  const conditions = []
+  const conditions = [VISIBLE_DEALER_SQL]
   const params = []
   let index = startIndex
 
@@ -108,6 +140,7 @@ async function readTicketCounts() {
       count(*) filter (where status = 'Pending')::int as pending,
       count(*) filter (where status = 'Closed')::int as closed
     from public.support_tickets
+    where ${VISIBLE_DEALER_SQL}
   `)
 
   const row = result.rows[0] ?? {}
@@ -121,13 +154,17 @@ async function readTicketCounts() {
 
 async function readTicketFacets() {
   const result = await getPool().query(`
-    select 'region' as facet, region as value from public.support_tickets group by region
+    select 'region' as facet, region as value from public.support_tickets
+      where ${VISIBLE_DEALER_SQL} group by region
     union all
-    select 'zone', zone from public.support_tickets group by zone
+    select 'zone', zone from public.support_tickets
+      where ${VISIBLE_DEALER_SQL} group by zone
     union all
-    select 'territory', territory from public.support_tickets group by territory
+    select 'territory', territory from public.support_tickets
+      where ${VISIBLE_DEALER_SQL} group by territory
     union all
-    select 'chatType', chat_type from public.support_tickets group by chat_type
+    select 'chatType', chat_type from public.support_tickets
+      where ${VISIBLE_DEALER_SQL} group by chat_type
     order by 1, 2
   `)
 
@@ -211,7 +248,7 @@ export async function getTicketsView({
   const [messageResult, tagResult, counts, facets, availableTags] = await Promise.all([
     ids.length
       ? getPool().query(
-        `select id, ticket_id, sender, body, sent_at
+        `select ${messageColumns}
          from public.support_ticket_messages
          where ticket_id = any($1::text[])
          order by sent_at asc, id asc`,
@@ -271,7 +308,8 @@ export async function getPendingTicketCount() {
   }
 
   const result = await getPool().query(
-    "select count(*)::int as pending from public.support_tickets where status = 'Pending'",
+    `select count(*)::int as pending from public.support_tickets
+     where status = 'Pending' and ${VISIBLE_DEALER_SQL}`,
   )
 
   return result.rows[0]?.pending ?? 0
@@ -290,8 +328,10 @@ export async function listPendingTicketNotices(limit = NOTIFICATION_LIMIT) {
   })
 
   if (!hasDatabase()) {
+    const visible = visibleDealerCodes()
+
     return getMemoryStore().tickets
-      .filter((row) => row.status === 'Pending')
+      .filter((row) => row.status === 'Pending' && visible.has(row.customer_dealer_code))
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, limit)
       .map(toNotice)
@@ -300,7 +340,7 @@ export async function listPendingTicketNotices(limit = NOTIFICATION_LIMIT) {
   const result = await getPool().query(
     `select id, subject, customer_name, created_at
      from public.support_tickets
-     where status = 'Pending'
+     where status = 'Pending' and ${VISIBLE_DEALER_SQL}
      order by created_at desc, id desc
      limit $1`,
     [limit],
@@ -309,7 +349,222 @@ export async function listPendingTicketNotices(limit = NOTIFICATION_LIMIT) {
   return result.rows.map(toNotice)
 }
 
-export async function addTicketMessage(ticketId, body, sender = 'agent') {
+/**
+ * Every conversation ever held with one dealer, newest first — the history panel
+ * beside an open chat. Unlike the inbox this is not filtered by the current
+ * search, so an agent can see past chats without disturbing their filters.
+ */
+export async function listDealerChatHistory(dealerCode) {
+  const toEntry = (row) => ({
+    id: row.id,
+    subject: row.subject,
+    status: row.status,
+    chatType: row.chat_type ?? row.chatType,
+    createdAt: new Date(row.created_at).toISOString(),
+  })
+
+  if (!hasDatabase()) {
+    return getMemoryStore().tickets
+      .filter((row) => row.customer_dealer_code === dealerCode)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .map(toEntry)
+  }
+
+  const result = await getPool().query(
+    `select id, subject, status, chat_type, created_at
+     from public.support_tickets
+     where customer_dealer_code = $1
+     order by created_at desc, id desc`,
+    [dealerCode],
+  )
+
+  return result.rows.map(toEntry)
+}
+
+/**
+ * Opens a fresh conversation with a dealer who already has one. Customer details
+ * are read from the dealer record rather than copied off the previous chat, so a
+ * new thread never carries stale contact information forward.
+ */
+export async function createDealerChat({ dealerCode, subject, chatType, message }, agent = '') {
+  if (!hasDatabase()) {
+    const error = new Error('Starting a chat requires a database connection.')
+    error.code = 'NO_DATABASE'
+    throw error
+  }
+
+  const dealerResult = await getPool().query(
+    `select code, name, region, zone, territory, email, status, verified
+     from public.dealers where code = $1`,
+    [dealerCode],
+  )
+  const dealer = dealerResult.rows[0]
+
+  if (!dealer) {
+    return { error: 'Dealer account not found.', status: 404 }
+  }
+
+  if (!dealer.verified || dealer.status !== 'Active') {
+    return {
+      error: 'Chats can only be started with a verified, active dealer.',
+      status: 409,
+    }
+  }
+
+  // Ids are TKT-000123; take the next one after the highest in use.
+  const nextResult = await getPool().query(
+    `select coalesce(max(substring(id from 5)::int), 0) + 1 as next
+     from public.support_tickets`,
+  )
+  const id = `TKT-${String(nextResult.rows[0].next).padStart(6, '0')}`
+
+  const inserted = await getPool().query(`
+    insert into public.support_tickets (
+      id, subject, chat_type, region, zone, territory, assigned_to, preview,
+      customer_name, customer_dealer_code, customer_location, customer_phone,
+      customer_email
+    )
+    values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    returning ${ticketColumns}
+  `, [
+    id,
+    subject,
+    chatType,
+    dealer.region,
+    dealer.zone,
+    dealer.territory,
+    agent || 'Unassigned',
+    message ?? '',
+    dealer.name,
+    dealer.code,
+    `${dealer.region}, ${dealer.zone}, ${dealer.territory}`,
+    '',
+    dealer.email ?? '',
+  ])
+
+  if (message) {
+    await addTicketMessage(id, message, 'agent')
+  }
+
+  return { ticket: mapTicketRow(inserted.rows[0], { messages: [], tags: [] }) }
+}
+
+/** Who a broadcast reaches: the same dealers a chat can be started with. */
+export async function listBroadcastRecipients() {
+  if (!hasDatabase()) {
+    return initialDealerRows
+      .filter((row) => row.verified === true && row.status === 'Active')
+      .map((row) => ({ code: row.code, name: row.name }))
+  }
+
+  const result = await getPool().query(
+    `select code, name, region, zone, territory, email
+     from public.dealers
+     where verified and status = 'Active'
+     order by code asc`,
+  )
+
+  return result.rows
+}
+
+/**
+ * Sends one file to every verified, active dealer as a new chat each.
+ *
+ * All of it in one transaction: a half-delivered broadcast is worse than none,
+ * and the ticket ids are handed out from a single starting number here rather
+ * than re-reading the maximum per insert, which would race with itself.
+ *
+ * Every chat's message points at the same stored object — the file is uploaded
+ * once, not once per dealer.
+ */
+export async function broadcastToDealers({ subject, message, attachment }, agent = '') {
+  if (!hasDatabase()) {
+    const error = new Error('Broadcasting requires a database connection.')
+    error.code = 'NO_DATABASE'
+    throw error
+  }
+
+  const recipients = await listBroadcastRecipients()
+
+  if (recipients.length === 0) {
+    return { sent: 0, tickets: [] }
+  }
+
+  const client = await getPool().connect()
+
+  try {
+    await client.query('begin')
+
+    const nextResult = await client.query(
+      `select coalesce(max(substring(id from 5)::int), 0) + 1 as next
+       from public.support_tickets`,
+    )
+    let next = nextResult.rows[0].next
+    const tickets = []
+
+    for (const dealer of recipients) {
+      const id = `TKT-${String(next).padStart(6, '0')}`
+      next += 1
+
+      await client.query(`
+        insert into public.support_tickets (
+          id, subject, chat_type, region, zone, territory, assigned_to, preview,
+          customer_name, customer_dealer_code, customer_location, customer_phone,
+          customer_email
+        )
+        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      `, [
+        id,
+        subject,
+        'Other',
+        dealer.region,
+        dealer.zone,
+        dealer.territory,
+        agent || 'Unassigned',
+        message || attachment.name,
+        dealer.name,
+        dealer.code,
+        `${dealer.region}, ${dealer.zone}, ${dealer.territory}`,
+        '',
+        dealer.email ?? '',
+      ])
+
+      await client.query(`
+        insert into public.support_ticket_messages (
+          ticket_id, sender, body,
+          attachment_path, attachment_name, attachment_type, attachment_size
+        )
+        values ($1, 'agent', $2, $3, $4, $5, $6)
+      `, [
+        id,
+        message || '',
+        attachment.path,
+        attachment.name,
+        attachment.type,
+        attachment.size,
+      ])
+
+      tickets.push({ id, dealerCode: dealer.code, dealerName: dealer.name })
+    }
+
+    await client.query('commit')
+    return { sent: tickets.length, tickets }
+  } catch (error) {
+    await client.query('rollback')
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+/**
+ * Appends a message, optionally carrying one already-uploaded attachment.
+ *
+ * `attachment` is `{ path, name, type, size }` — the object is in the bucket by
+ * the time this runs, so a failed insert leaves a stray object rather than a row
+ * pointing at nothing. The caller removes it.
+ */
+export async function addTicketMessage(ticketId, body, sender = 'agent', attachment = null) {
   if (!hasDatabase()) {
     const store = getMemoryStore()
 
@@ -323,16 +578,62 @@ export async function addTicketMessage(ticketId, body, sender = 'agent') {
       sender,
       body,
       sent_at: new Date().toISOString(),
+      attachment_path: attachment?.path ?? null,
+      attachment_name: attachment?.name ?? null,
+      attachment_type: attachment?.type ?? null,
+      attachment_size: attachment?.size ?? null,
     }
     store.messages.push(message)
     return message
   }
 
   const result = await getPool().query(
-    `insert into public.support_ticket_messages (ticket_id, sender, body)
-     values ($1, $2, $3)
-     returning id, ticket_id, sender, body, sent_at`,
-    [ticketId, sender, body],
+    `insert into public.support_ticket_messages (
+       ticket_id, sender, body,
+       attachment_path, attachment_name, attachment_type, attachment_size
+     )
+     values ($1, $2, $3, $4, $5, $6, $7)
+     returning ${messageColumns}`,
+    [
+      ticketId,
+      sender,
+      body,
+      attachment?.path ?? null,
+      attachment?.name ?? null,
+      attachment?.type ?? null,
+      attachment?.size ?? null,
+    ],
+  )
+
+  return result.rows[0] ?? null
+}
+
+/**
+ * The stored object behind one message, or null when there is none.
+ *
+ * Scoped by ticket as well as message id so a guessed id cannot pull a file out
+ * of a chat the caller was not reading.
+ */
+export async function getMessageAttachment(ticketId, messageId) {
+  const id = Number(messageId)
+
+  if (!Number.isInteger(id)) {
+    return null
+  }
+
+  if (!hasDatabase()) {
+    const found = getMemoryStore().messages.find(
+      (row) => row.id === id && row.ticket_id === ticketId,
+    )
+
+    return found?.attachment_path ? found : null
+  }
+
+  const result = await getPool().query(
+    `select attachment_path, attachment_name, attachment_type, attachment_size
+     from public.support_ticket_messages
+     where id = $1 and ticket_id = $2 and attachment_path is not null`,
+    [id, ticketId],
   )
 
   return result.rows[0] ?? null
