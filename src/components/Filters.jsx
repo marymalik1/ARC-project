@@ -4,6 +4,7 @@ import {
   ANY_TERRITORY,
   ANY_ZONE,
   emptyFacets,
+  statusOptions,
   verificationOptions,
 } from '../lib/dealers'
 
@@ -68,6 +69,12 @@ export default function Filters({
         </select>
       </div>
       <div className="field">
+        <label htmlFor="status">Status</label>
+        <select id="status" value={values.status} onChange={update('status')}>
+          {statusOptions.map((option) => <option key={option}>{option}</option>)}
+        </select>
+      </div>
+      <div className="field">
         <label htmlFor="verification">Verification</label>
         <select id="verification" value={values.verification} onChange={update('verification')}>
           {verificationOptions.map((option) => <option key={option}>{option}</option>)}
@@ -83,13 +90,13 @@ export default function Filters({
         />
       </div>
       <div className="filter-actions">
-        <button className="button button--clear" type="button" onClick={onClear}>
-          <ListFilter aria-hidden="true" />
-          <span>Clear Filters</span>
-        </button>
         <button className="button button--primary search-button" type="submit">
           <Search aria-hidden="true" />
           <span>Search</span>
+        </button>
+        <button className="button button--clear" type="button" onClick={onClear}>
+          <ListFilter aria-hidden="true" />
+          <span>Clear Filters</span>
         </button>
         {/* Omitted entirely for roles without the capability, rather than
             rendered and then rejected by the API. */}

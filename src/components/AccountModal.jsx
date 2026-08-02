@@ -1,4 +1,4 @@
-import { Check, Eye, EyeOff, RotateCcw, Trash2, X } from 'lucide-react'
+import { Check, Eye, EyeOff, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { MIN_PASSWORD_LENGTH, dealerRoles, emptyFacets } from '../lib/dealers'
 
@@ -65,6 +65,14 @@ export default function AccountModal({
     return ''
   }
 
+  function validateRole() {
+    if (values.storeCode.trim() && !/^\d+$/.test(values.storeCode.trim())) {
+      return 'Store code must contain digits only.'
+    }
+
+    return ''
+  }
+
   function goNext() {
     const message = validatePersonalInfo()
 
@@ -90,6 +98,13 @@ export default function AccountModal({
       return
     }
 
+    const roleMessage = validateRole()
+
+    if (roleMessage) {
+      setStepError(roleMessage)
+      return
+    }
+
     onSave({ ...values, status, verified })
   }
 
@@ -107,39 +122,53 @@ export default function AccountModal({
           <button type="button" onClick={onClose} aria-label="Close dialog"><X /></button>
         </div>
 
-        {/* Verification applies to the account as a whole, so it sits outside the
-            steps. It only exists once there is an account to verify. */}
-        {editing && (
-          <div className="modal-verify">
-            <div className="modal-verify-choice" role="radiogroup" aria-label="Verification">
-              <label>
-                <input
-                  type="radio"
-                  name="verified"
-                  checked={verified}
-                  onChange={() => setVerified(true)}
-                />
-                Verified User
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="verified"
-                  checked={!verified}
-                  onChange={() => setVerified(false)}
-                />
-                Unverified User
-              </label>
-            </div>
-            {!verified && (
-              <button
-                className="button button--secondary"
-                type="button"
-                onClick={() => setVerified(true)}
-              >
-                Verify user
-              </button>
-            )}
+        {/* Verification and status apply to the account as a whole, so they sit
+            outside the steps and are settable when creating one too. */}
+        <div className="modal-verify">
+          <div className="modal-verify-choice" role="radiogroup" aria-label="Verification">
+            <label>
+              <input
+                type="radio"
+                name="verified"
+                checked={verified}
+                onChange={() => setVerified(true)}
+              />
+              Verified User
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="verified"
+                checked={!verified}
+                onChange={() => setVerified(false)}
+              />
+              Unverified User
+            </label>
+          </div>
+          <label className="modal-status-select">
+            <span>Status</span>
+            <select
+              name="status"
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+            >
+              <option>Active</option>
+              <option>Inactive</option>
+            </select>
+          </label>
+        </div>
+
+        {/* A shortcut for the common review action; only meaningful on an
+            existing account that has not been verified yet. */}
+        {editing && !verified && (
+          <div className="modal-verify modal-verify--secondary">
+            <button
+              className="button button--secondary"
+              type="button"
+              onClick={() => setVerified(true)}
+            >
+              Verify user
+            </button>
           </div>
         )}
 
@@ -243,29 +272,15 @@ export default function AccountModal({
                   name="storeCode"
                   value={values.storeCode}
                   onChange={update('storeCode')}
-                  placeholder="Enter store code"
+                  inputMode="numeric"
+                  placeholder="Digits only"
                 />
               </label>
 
               {editing && (
                 <>
-                  <h3 className="modal-section">Account status</h3>
-                  <div className="modal-danger">
-                    <button
-                      className="button button--secondary"
-                      type="button"
-                      onClick={() =>
-                        setStatus((value) => (value === 'Active' ? 'Inactive' : 'Active'))
-                      }
-                    >
-                      <RotateCcw size={18} />
-                      {status === 'Active' ? 'Set Inactive' : 'Set Active'}
-                    </button>
-                    <span className="modal-status-note">
-                      Currently <strong>{status}</strong>
-                    </span>
-                  </div>
-
+                  {/* Status now lives beside Verification at the top, so it is
+                      set in one place for both creating and editing. */}
                   <h3 className="modal-section">Created by</h3>
                   <p className="modal-meta">
                     {dealer.createdBy || 'Not recorded'}

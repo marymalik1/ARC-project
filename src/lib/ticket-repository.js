@@ -449,6 +449,114 @@ export async function createDealerChat({ dealerCode, subject, chatType, message 
   return { ticket: mapTicketRow(inserted.rows[0], { messages: [], tags: [] }) }
 }
 
+/** Who a broadcast reaches: the same dealers a chat can be started with. */
+export async function listBroadcastRecipients() {
+  if (!hasDatabase()) {
+    return initialDealerRows
+      .filter((row) => row.verified === true && row.status === 'Active')
+      .map((row) => ({ code: row.code, name: row.name }))
+  }
+
+  const result = await getPool().query(
+    `select code, name, region, zone, territory, email
+     from public.dealers
+     where verified and status = 'Active'
+     order by code asc`,
+  )
+
+  return result.rows
+}
+
+/**
+ * Sends one file to every verified, active dealer as a new chat each.
+ *
+ * All of it in one transaction: a half-delivered broadcast is worse than none,
+ * and the ticket ids are handed out from a single starting number here rather
+ * than re-reading the maximum per insert, which would race with itself.
+ *
+ * Every chat's message points at the same stored object — the file is uploaded
+ * once, not once per dealer.
+ */
+export async function broadcastToDealers({ subject, message, attachment }, agent = '') {
+  if (!hasDatabase()) {
+    const error = new Error('Broadcasting requires a database connection.')
+    error.code = 'NO_DATABASE'
+    throw error
+  }
+
+  const recipients = await listBroadcastRecipients()
+
+  if (recipients.length === 0) {
+    return { sent: 0, tickets: [] }
+  }
+
+  const client = await getPool().connect()
+
+  try {
+    await client.query('begin')
+
+    const nextResult = await client.query(
+      `select coalesce(max(substring(id from 5)::int), 0) + 1 as next
+       from public.support_tickets`,
+    )
+    let next = nextResult.rows[0].next
+    const tickets = []
+
+    for (const dealer of recipients) {
+      const id = `TKT-${String(next).padStart(6, '0')}`
+      next += 1
+
+      await client.query(`
+        insert into public.support_tickets (
+          id, subject, chat_type, region, zone, territory, assigned_to, preview,
+          customer_name, customer_dealer_code, customer_location, customer_phone,
+          customer_email
+        )
+        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      `, [
+        id,
+        subject,
+        'Other',
+        dealer.region,
+        dealer.zone,
+        dealer.territory,
+        agent || 'Unassigned',
+        message || attachment.name,
+        dealer.name,
+        dealer.code,
+        `${dealer.region}, ${dealer.zone}, ${dealer.territory}`,
+        '',
+        dealer.email ?? '',
+      ])
+
+      await client.query(`
+        insert into public.support_ticket_messages (
+          ticket_id, sender, body,
+          attachment_path, attachment_name, attachment_type, attachment_size
+        )
+        values ($1, 'agent', $2, $3, $4, $5, $6)
+      `, [
+        id,
+        message || '',
+        attachment.path,
+        attachment.name,
+        attachment.type,
+        attachment.size,
+      ])
+
+      tickets.push({ id, dealerCode: dealer.code, dealerName: dealer.name })
+    }
+
+    await client.query('commit')
+    return { sent: tickets.length, tickets }
+  } catch (error) {
+    await client.query('rollback')
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
 /**
  * Appends a message, optionally carrying one already-uploaded attachment.
  *

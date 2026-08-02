@@ -10,6 +10,7 @@ import {
   Download,
   EllipsisVertical,
   Mail,
+  Megaphone,
   MessageSquarePlus,
   Paperclip,
   Phone,
@@ -38,6 +39,7 @@ import {
   validateMessage,
 } from '../lib/tickets'
 import { useTicketView } from '../lib/use-ticket-view'
+import BroadcastModal from './BroadcastModal'
 import Header from './Header'
 import { useShell } from './ShellState'
 import Sidebar from './Sidebar'
@@ -140,7 +142,7 @@ function SupportFilters({
   onClear,
 }) {
   return (
-    <form className="support-filters" onSubmit={onApply}>
+    <form className="support-filters" id="support-filters" onSubmit={onApply}>
       <label className="support-filter-field">
         <span>Dealer Code</span>
         <input
@@ -281,9 +283,11 @@ function ChatInbox({
   total = tickets.length,
   page = 1,
   pageSize = tickets.length || 1,
+  filtersOpen = true,
   onQuery,
   onTab,
   onSelect,
+  onToggleFilters,
   onPage = () => {},
 }) {
   const lastPage = ticketTotalPages(total, pageSize)
@@ -305,7 +309,14 @@ function ChatInbox({
             onChange={(event) => onQuery(event.target.value)}
           />
         </label>
-        <button className="chat-filter-button" type="button" aria-label="Filter chats">
+        <button
+          className={`chat-filter-button ${filtersOpen ? 'chat-filter-button--active' : ''}`}
+          type="button"
+          aria-label={filtersOpen ? 'Hide filters' : 'Show filters'}
+          aria-expanded={filtersOpen}
+          aria-controls="support-filters"
+          onClick={onToggleFilters}
+        >
           <SlidersHorizontal aria-hidden="true" />
         </button>
       </div>
@@ -672,13 +683,25 @@ function Conversation({
 }
 
 function DetailCard({ title, children }) {
+  const [open, setOpen] = useState(true)
+
   return (
-    <section className="detail-card">
+    <section className={`detail-card ${open ? '' : 'detail-card--collapsed'}`}>
       <header>
         <h2>{title}</h2>
-        <ChevronUp aria-hidden="true" />
+        {/* The chevron is the control rather than the whole header: a heading is
+            not phrasing content and cannot legally sit inside a button. */}
+        <button
+          className="detail-card-toggle"
+          type="button"
+          aria-expanded={open}
+          aria-label={`${open ? 'Collapse' : 'Expand'} ${title}`}
+          onClick={() => setOpen(!open)}
+        >
+          <ChevronUp aria-hidden="true" />
+        </button>
       </header>
-      {children}
+      {open && children}
     </section>
   )
 }
@@ -811,6 +834,10 @@ export default function CustomerCare({ initialView, notifications, user }) {
   const [draft, setDraft] = useState('')
   const [attachment, setAttachment] = useState(null)
   const [sending, setSending] = useState(false)
+  // Open by default — the panel is how the workspace has always looked. The
+  // inbox's filter button is what closes it, to hand the space back to the chats.
+  const [filtersOpen, setFiltersOpen] = useState(true)
+  const [broadcastOpen, setBroadcastOpen] = useState(false)
   const [draftFilters, setDraftFilters] = useState(() => ({ ...EMPTY_TICKET_FILTERS }))
   const [history, setHistory] = useState({ code: '', chats: [] })
   const { collapsed, drawerOpen, animate, toggle, closeDrawer } = useShell()
@@ -1067,6 +1094,16 @@ export default function CustomerCare({ initialView, notifications, user }) {
         />
         <main className="customer-care-content">
           <div className="page-heading customer-care-heading">
+            {canManage && (
+              <button
+                className="broadcast-button"
+                type="button"
+                onClick={() => setBroadcastOpen(true)}
+              >
+                <Megaphone aria-hidden="true" />
+                Send to All Dealers
+              </button>
+            )}
             <h1>Customer Care</h1>
             <div className="breadcrumb" aria-label="Breadcrumb">
               <span>Home</span>
@@ -1076,14 +1113,16 @@ export default function CustomerCare({ initialView, notifications, user }) {
             </div>
           </div>
 
-          <SupportFilters
-            filters={draftFilters}
-            facets={view.facets}
-            exportHref={exportHref}
-            onChange={updateDraftFilter}
-            onApply={applyFilters}
-            onClear={clearFilters}
-          />
+          {filtersOpen && (
+            <SupportFilters
+              filters={draftFilters}
+              facets={view.facets}
+              exportHref={exportHref}
+              onChange={updateDraftFilter}
+              onApply={applyFilters}
+              onClear={clearFilters}
+            />
+          )}
 
           <p className="request-error" role="alert" aria-live="polite">{error}</p>
 
@@ -1097,9 +1136,11 @@ export default function CustomerCare({ initialView, notifications, user }) {
               total={view.total}
               page={view.page}
               pageSize={view.pageSize}
+              filtersOpen={filtersOpen}
               onQuery={updateInboxQuery}
               onTab={switchTab}
               onSelect={setSelectedId}
+              onToggleFilters={() => setFiltersOpen(!filtersOpen)}
               onPage={goToPage}
             />
             <Conversation
@@ -1124,6 +1165,14 @@ export default function CustomerCare({ initialView, notifications, user }) {
           </div>
         </main>
       </div>
+      {broadcastOpen && (
+        <BroadcastModal
+          onClose={() => setBroadcastOpen(false)}
+          // The new chats land in the inbox straight away rather than waiting
+          // for the next poll.
+          onSent={() => refresh({ silent: true })}
+        />
+      )}
     </div>
   )
 }

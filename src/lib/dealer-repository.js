@@ -4,6 +4,7 @@ import { NOTIFICATION_LIMIT } from './notifications'
 import { hashPassword } from './password'
 import {
   ANY_REGION,
+  ANY_STATUS,
   ANY_TERRITORY,
   ANY_VERIFICATION,
   ANY_ZONE,
@@ -58,6 +59,7 @@ function buildFilterClause(filters, startIndex = 1) {
   if (values.region !== ANY_REGION) add('region = $$', values.region)
   if (values.zone !== ANY_ZONE) add('zone = $$', values.zone)
   if (values.territory !== ANY_TERRITORY) add('territory = $$', values.territory)
+  if (values.status !== ANY_STATUS) add('status = $$', values.status)
 
   if (values.verification !== ANY_VERIFICATION) {
     conditions.push(values.verification === 'Verified' ? 'verified' : 'not verified')

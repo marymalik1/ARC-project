@@ -19,6 +19,7 @@ export function viewFromSearchParams(searchParams) {
       region: searchParams.get('region') ?? '',
       zone: searchParams.get('zone') ?? '',
       territory: searchParams.get('territory') ?? '',
+      status: searchParams.get('status') ?? '',
       verification: searchParams.get('verification') ?? '',
       query: searchParams.get('q') ?? '',
     },

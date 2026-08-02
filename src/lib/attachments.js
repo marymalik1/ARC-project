@@ -38,6 +38,32 @@ export function formatBytes(bytes) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`
 }
 
+// A broadcast is a deliberate act by staff rather than something a dealer can
+// trigger, so it takes any format at all — the allow-list above exists to stop
+// the inbox serving arbitrary uploads back to a browser, and a broadcast file is
+// chosen by the sender. The size ceiling still applies: it is copied to every
+// recipient's chat.
+export const MAX_BROADCAST_BYTES = 10 * 1024 * 1024
+
+export function validateBroadcastFile(file) {
+  if (!file || typeof file.size !== 'number') {
+    return { ok: false, error: 'Choose a file or image to send.' }
+  }
+
+  if (file.size === 0) {
+    return { ok: false, error: 'That file is empty.' }
+  }
+
+  if (file.size > MAX_BROADCAST_BYTES) {
+    return {
+      ok: false,
+      error: `Broadcasts are limited to ${formatBytes(MAX_BROADCAST_BYTES)}.`,
+    }
+  }
+
+  return { ok: true, value: file }
+}
+
 export function validateAttachment(file) {
   if (!file || typeof file.size !== 'number') {
     return { ok: false, error: 'Select a file to attach.' }

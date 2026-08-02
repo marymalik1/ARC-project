@@ -742,10 +742,10 @@ button {
   font-size: 17px;
 }
 
-/* Six filters no longer leave room for the search box and four buttons on one
-   row, so search takes the rest of its row and the actions get their own. */
+/* Seven filters fill row one and spill two onto row two; search takes the gap
+   they leave rather than claiming a row of its own, and the buttons follow. */
 .search-field {
-  grid-column: 2 / -1;
+  grid-column: 3 / -1;
 }
 
 .filter-actions {
@@ -1298,6 +1298,193 @@ td:nth-child(8) {
   margin-top: 8px;
 }
 
+/* Broadcast modal. Single column — it asks for one file and one optional note,
+   not the two-column form the account modal needs. */
+.broadcast-modal {
+  width: min(500px, 100%);
+}
+
+.broadcast-modal .modal-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 21px;
+}
+
+.broadcast-modal .modal-header h2 svg {
+  width: 22px;
+  height: 22px;
+  color: #d3161c;
+}
+
+/* `.modal .broadcast-form`, not `.broadcast-form`: the account modal's
+   `.modal form` rule sets two columns and outranks a lone class, so a single
+   class here loses no matter where it sits in the file. */
+.modal .broadcast-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.broadcast-audience {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  color: #45464a;
+  background: #f6f6f7;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.broadcast-audience svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: #56575b;
+}
+
+.broadcast-drop {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  padding: 26px 18px;
+  color: #45464a;
+  background: #fff;
+  border: 1px dashed #cfcfd2;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.broadcast-drop:hover {
+  border-color: #e58085;
+  background: #fffafa;
+}
+
+.broadcast-drop svg {
+  width: 22px;
+  height: 22px;
+  color: #d3161c;
+}
+
+.broadcast-drop strong {
+  font-size: 15px;
+}
+
+.broadcast-drop small {
+  color: #6a6b6f;
+  font-size: 12px;
+}
+
+.broadcast-file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #e2e2e4;
+  border-radius: 10px;
+}
+
+.broadcast-file img,
+.broadcast-file-icon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  place-items: center;
+  background: #f6f6f7;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.broadcast-file-icon svg {
+  width: 20px;
+  height: 20px;
+  color: #56575b;
+}
+
+.broadcast-file-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.broadcast-file-copy strong {
+  display: block;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.broadcast-file-copy small {
+  color: #6a6b6f;
+  font-size: 12px;
+}
+
+.broadcast-file > button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  color: #56575b;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.broadcast-message {
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.broadcast-message textarea {
+  padding: 10px 12px;
+  border: 1px solid #dedee0;
+  border-radius: 7px;
+  font: inherit;
+  font-weight: 400;
+  resize: vertical;
+}
+
+.broadcast-warning {
+  margin: 0;
+  color: #c70d12;
+  font-size: 13px;
+}
+
+.broadcast-modal .modal-actions .button {
+  height: 46px;
+  font-size: 15px;
+}
+
+.broadcast-modal .modal-actions .button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.broadcast-modal .button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.broadcast-result strong {
+  display: block;
+  font-size: 17px;
+}
+
+.broadcast-result p {
+  margin: 6px 0 0;
+  color: #55565a;
+  font-size: 14px;
+}
+
 .modal-actions .button {
   height: 48px;
 }
@@ -1427,6 +1614,29 @@ td:nth-child(8) {
   width: 18px;
   height: 18px;
   accent-color: var(--arc-red);
+}
+
+/* Status sits beside Verification: two independent axes, set in one place. */
+.modal-status-select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.modal-status-select select {
+  height: 42px;
+  padding: 0 10px;
+  border: 1px solid #dedee0;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.modal-verify--secondary {
+  justify-content: flex-end;
+  margin-top: -8px;
+  padding-bottom: 14px;
 }
 
 .modal-password {
@@ -2960,7 +3170,14 @@ td:nth-child(8) {
   background: #fbfbfb;
 }
 
+/* The broadcast button is the heading row's trailing action, so the row lays
+   itself out around it rather than the button sitting under the breadcrumb. */
 .customer-care-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding-left: 4px;
 }
 
@@ -2969,6 +3186,37 @@ td:nth-child(8) {
   font-size: 34px;
   line-height: 1.15;
   letter-spacing: -0.6px;
+}
+
+.customer-care-heading .breadcrumb {
+  order: 3;
+  width: 100%;
+}
+
+.broadcast-button {
+  display: inline-flex;
+  order: 2;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 17px;
+  color: #fff;
+  background: linear-gradient(100deg, #d20c11, #e61519);
+  border: 1px solid #d20d12;
+  border-radius: 7px;
+  box-shadow: 0 3px 7px rgb(191 0 6 / 12%);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.broadcast-button:hover {
+  box-shadow: 0 5px 12px rgb(191 0 6 / 20%);
+}
+
+.broadcast-button svg {
+  width: 17px;
+  height: 17px;
 }
 
 .customer-care-heading .breadcrumb {
@@ -3227,18 +3475,32 @@ td:nth-child(8) {
   cursor: pointer;
 }
 
+/* Reads as pressed while the filter panel is showing, so the button says which
+   state it put the page in. */
+.chat-filter-button--active {
+  color: #d3161c;
+  background: #fdecec;
+  border-color: #f0bcbe;
+}
+
 .ticket-items {
   display: flex;
   min-height: 0;
   flex-direction: column;
+  /* Engages only if an ancestor ever bounds this column's height. Today nothing
+     does: a full page of chats grows the inbox and the page scrolls, which is
+     what it did before too. */
+  overflow-y: auto;
 }
 
 .ticket-item {
   position: relative;
   display: grid;
   width: 100%;
-  min-height: 91px;
-  flex: 1 1 0;
+  min-height: 72px;
+  /* Never stretch. These used to share the panel's height between them, which
+     turned three chats into three enormous rows. */
+  flex: none;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
@@ -3272,7 +3534,7 @@ td:nth-child(8) {
 }
 
 .ticket-item-copy {
-  gap: 10px;
+  gap: 4px;
 }
 
 .ticket-item-copy strong {
@@ -3299,7 +3561,7 @@ td:nth-child(8) {
 
 .ticket-item-meta {
   align-items: flex-end;
-  gap: 12px;
+  gap: 6px;
 }
 
 .ticket-item-meta time {
@@ -3732,6 +3994,34 @@ td:nth-child(8) {
   height: 17px;
 }
 
+.detail-card-toggle {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  color: #4f5054;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.detail-card-toggle:hover,
+.detail-card-toggle:focus-visible {
+  background: #f2f2f3;
+}
+
+/* Points down once the card is shut, so the chevron says which way it opens. */
+.detail-card--collapsed .detail-card-toggle {
+  transform: rotate(180deg);
+}
+
+.detail-card--collapsed > header {
+  border-bottom: 0;
+}
+
 .customer-details-body {
   padding: 18px;
 }
@@ -3929,4 +4219,50 @@ td:nth-child(8) {
 .ticket-item:focus-visible {
   outline: 3px solid rgb(227 18 26 / 24%);
   outline-offset: 2px;
+}
+
+/* Support workspace height
+ *
+ * The conversation panel already declares `grid-template-rows: 151px
+ * minmax(0, 1fr) 125px` and `.conversation-body` already sets `overflow-y:
+ * auto` — but neither could take effect, because nothing up the chain had a
+ * definite height. A `1fr` row inside an auto-height ancestor just resolves to
+ * its content, so every reply made the panel taller and pushed the page down
+ * instead of scrolling the thread.
+ *
+ * Making the shell a flex column and letting the workspace take the leftover
+ * space gives that definite height. It is measured rather than hard-coded
+ * because the filter panel above wraps to a second row on narrower screens,
+ * which moves the workspace's top edge.
+ *
+ * Only above 1280px, where the three columns sit side by side. At or below that
+ * the detail rail drops to its own row, so a viewport-bound workspace would
+ * squeeze the conversation to a sliver — there the page is meant to scroll as
+ * one, which is what it did before.
+ */
+@media (min-width: 1281px) {
+  .customer-care-shell .main-shell {
+    display: flex;
+    height: 100vh;
+    flex-direction: column;
+  }
+
+  .customer-care-content {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .support-workspace {
+    min-height: 420px;
+    flex: 1;
+  }
+
+  /* The rail can outgrow the viewport once a dealer has a long chat history. */
+  .ticket-details-rail {
+    min-height: 0;
+    overflow-y: auto;
+  }
 }
