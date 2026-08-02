@@ -7,6 +7,7 @@ import {
   collectTicketFacets,
   EMPTY_TICKET_FILTERS,
   filterTickets,
+  mapMessageRow,
   mapTicketRow,
   normalizeTicketFilters,
   paginateTickets,
@@ -227,4 +228,37 @@ test('ticketFiltersToSearchParams only sends the filters that narrow the inbox',
 test('validateTicketStatus accepts only the supported statuses', () => {
   assert.deepEqual(validateTicketStatus('Closed'), { ok: true, value: 'Closed' })
   assert.equal(validateTicketStatus('Deleted').ok, false)
+})
+
+test('a message carries its attachment, but never the storage path', () => {
+  const mapped = mapMessageRow({
+    id: 42,
+    sender: 'agent',
+    body: 'Here is the invoice.',
+    sent_at: '2026-08-02T09:00:00.000Z',
+    attachment_path: 'TKT-000321/8f14-invoice.pdf',
+    attachment_name: 'invoice.pdf',
+    attachment_type: 'application/pdf',
+    attachment_size: '20480',
+  })
+
+  // The browser addresses the file by message id; the object key stays server-side.
+  assert.deepEqual(mapped.attachment, {
+    messageId: 42,
+    name: 'invoice.pdf',
+    type: 'application/pdf',
+    size: 20480,
+  })
+  assert.equal(JSON.stringify(mapped).includes('8f14-invoice.pdf'), false)
+})
+
+test('a message with no file has no attachment', () => {
+  const mapped = mapMessageRow({
+    id: 43,
+    sender: 'customer',
+    body: 'Thanks!',
+    sent_at: '2026-08-02T09:05:00.000Z',
+  })
+
+  assert.equal(mapped.attachment, null)
 })

@@ -228,6 +228,16 @@ export function mapMessageRow(row) {
     sender: row.sender,
     time: formatTime(sentAt),
     body: row.body,
+    // The object key never leaves the server: the browser asks for the file by
+    // message id and the route decides whether it may have it.
+    attachment: row.attachment_name
+      ? {
+        messageId: row.id,
+        name: row.attachment_name,
+        type: row.attachment_type ?? '',
+        size: Number(row.attachment_size) || 0,
+      }
+      : null,
   }
 }
 
@@ -264,6 +274,38 @@ export function mapTicketRow(row, { messages = [], tags = [], reference = new Da
     tags,
     messages: messages.map(mapMessageRow),
   }
+}
+
+// Types an agent can open a new conversation under.
+export const chatTypes = Object.freeze([
+  'Login Issue',
+  'Report Issue',
+  'Ledger Issue',
+  'Product Issue',
+  'Other',
+])
+
+export function validateNewChat(input) {
+  const value = {
+    dealerCode: String(input?.dealerCode ?? '').trim().toUpperCase(),
+    subject: String(input?.subject ?? '').trim(),
+    chatType: String(input?.chatType ?? '').trim(),
+    message: String(input?.message ?? '').trim(),
+  }
+
+  if (!/^D\d{5}$/.test(value.dealerCode)) {
+    return { ok: false, error: 'A valid dealer code is required.' }
+  }
+
+  if (!value.subject) {
+    return { ok: false, error: 'A subject is required.' }
+  }
+
+  if (!chatTypes.includes(value.chatType)) {
+    return { ok: false, error: 'Select a valid chat type.' }
+  }
+
+  return { ok: true, value }
 }
 
 export function validateMessage(message) {

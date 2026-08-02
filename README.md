@@ -78,6 +78,21 @@ The app reports which backend it is using — `curl localhost:3000/api/dealers`
 returns `"source": "database"` when connected and `"source": "memory"` when
 falling back to the in-memory development repository.
 
+## Message attachments
+
+Files attached to a support message go to Supabase Storage; the database keeps
+only the object key and the original name. Create the bucket once:
+
+**Supabase → Storage → New bucket**, named `support-attachments`, and leave
+**Public bucket** off. It must stay private: attachments are streamed back
+through `/api/tickets/[id]/attachments/[messageId]`, which checks the reader's
+session on every request, so nothing is reachable by URL alone.
+
+Then set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (see `.env.example`).
+Without them the app runs normally and the paperclip reports that attachments
+are not configured. Uploads are capped at 5 MB and limited to images, PDFs,
+plain text/CSV and Office documents — see `src/lib/attachments.js`.
+
 ## Verification
 
 ```bash

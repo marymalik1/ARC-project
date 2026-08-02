@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { CAPABILITIES } from '../../../lib/permissions'
 import { requirePermission } from '../../../lib/require-permission'
-import { getTicketsView } from '../../../lib/ticket-repository'
+import { createDealerChat, getTicketsView } from '../../../lib/ticket-repository'
+import { validateNewChat } from '../../../lib/tickets'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -44,5 +45,32 @@ export async function GET(request) {
       { error: 'Unable to load support chats.' },
       { status: 500 },
     )
+  }
+}
+
+/** Opens a new conversation with a dealer who already has one. */
+export async function POST(request) {
+  try {
+    const { user: agent, response: denied } = await requirePermission(CAPABILITIES.CARE_MANAGE)
+
+    if (denied) {
+      return denied
+    }
+
+    const validation = validateNewChat(await request.json())
+
+    if (!validation.ok) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
+    }
+
+    const result = await createDealerChat(validation.value, agent.name)
+
+    if (result.error) {
+      return NextResponse.json({ error: result.error }, { status: result.status })
+    }
+
+    return NextResponse.json({ ticket: result.ticket }, { status: 201 })
+  } catch {
+    return NextResponse.json({ error: 'Unable to start this chat.' }, { status: 500 })
   }
 }

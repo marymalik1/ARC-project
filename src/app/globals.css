@@ -1028,6 +1028,73 @@ td:nth-child(8) {
 
 /* Status pill plus the verification badge. Wraps rather than spilling into the
    next column when the cell is narrow. */
+/* Chat history panel in the ticket detail rail */
+.chat-history {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chat-history-item {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 10px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chat-history-item:hover {
+  background: #f6f6f7;
+}
+
+.chat-history-item--active {
+  background: var(--red-soft);
+  border-color: #f3c9cb;
+}
+
+.chat-history-subject {
+  overflow: hidden;
+  color: #17191c;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-history-meta {
+  grid-column: 1;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.chat-history-status {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.chat-history-status--pending {
+  color: #8a5a00;
+  background: #fff4e0;
+}
+
+.chat-history-status--closed {
+  color: #4a4d52;
+  background: #eeeeef;
+}
+
 .status-cell {
   display: flex;
   flex-wrap: wrap;
@@ -2082,7 +2149,9 @@ td:nth-child(8) {
   background: #ffe1e3;
 }
 
-.message-bubble svg {
+/* Direct child only — the delivered tick. An icon inside an attachment link is
+   part of the message body and must not be pinned to the bubble's corner. */
+.message-bubble > svg {
   position: absolute;
   right: 19px;
   bottom: 16px;
@@ -2091,9 +2160,77 @@ td:nth-child(8) {
   color: #525357;
 }
 
+.message-attachment {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 14px;
+  color: inherit;
+  background: rgb(255 255 255 / 70%);
+  border: 1px solid #dcdcde;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.message-attachment:hover {
+  border-color: #c9c9cc;
+}
+
+.message-attachment svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  color: #56575b;
+}
+
+.message-attachment span {
+  min-width: 0;
+  font-size: 15px;
+}
+
+.message-attachment strong {
+  display: block;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-attachment small {
+  color: #6a6b6f;
+  font-size: 13px;
+}
+
+.message-attachment--image {
+  display: block;
+  padding: 8px;
+}
+
+.message-attachment--image img {
+  display: block;
+  max-width: 260px;
+  max-height: 220px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.message-attachment--image span {
+  display: block;
+  margin-top: 6px;
+  overflow: hidden;
+  color: #6a6b6f;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .message-composer {
+  position: relative;
   display: grid;
-  height: 92px;
+  /* Grows by one row when a file is staged, rather than clipping the chip. */
+  min-height: 92px;
   margin: 15px 29px 18px;
   grid-template-columns: 43px 43px minmax(0, 1fr) 143px;
   align-items: center;
@@ -2132,6 +2269,108 @@ td:nth-child(8) {
 .message-composer input::placeholder {
   color: #858589;
   opacity: 1;
+}
+
+/* Only reachable through the paperclip button, never focused directly. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* The staged file, before Send. Spans the composer so a long name has room. */
+.attachment-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #f6f6f7;
+  border: 1px solid #e5e5e6;
+  border-radius: 8px;
+  grid-column: 1 / -1;
+}
+
+.attachment-chip > svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: #56575b;
+}
+
+.attachment-chip > span {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-chip small {
+  flex: none;
+  color: #6a6b6f;
+  font-size: 13px;
+}
+
+.attachment-chip button {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  margin-left: auto;
+  place-items: center;
+  padding: 0;
+  color: #56575b;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.attachment-chip button svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Sits above the composer rather than below it: the composer is already at the
+   bottom of the conversation panel, and a panel opening downwards would fall
+   off the screen. */
+.emoji-panel {
+  position: absolute;
+  z-index: 14;
+  bottom: calc(100% + 10px);
+  left: 8px;
+  display: grid;
+  width: 302px;
+  max-width: calc(100% - 16px);
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #dedee0;
+  border-radius: 10px;
+  box-shadow: 0 14px 34px rgb(0 0 0 / 14%);
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.emoji-panel button {
+  display: grid;
+  height: 38px;
+  place-items: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.emoji-panel button:hover,
+.emoji-panel button:focus-visible {
+  background: #f4f4f5;
 }
 
 .send-button {
@@ -2533,7 +2772,10 @@ td:nth-child(8) {
   }
 
   .message-composer {
-    height: 63px;
+    /* A minimum, not a fixed height: the staged-attachment chip adds a row, and
+       a pinned height would clip it. Identical when nothing is attached. */
+    min-height: 63px;
+    height: auto;
     margin: 10px 20px 13px;
     grid-template-columns: 30px 30px minmax(0, 1fr) 98px;
   }
