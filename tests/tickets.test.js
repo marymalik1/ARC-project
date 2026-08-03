@@ -100,11 +100,13 @@ test('applyTicketFilters combines tab, dealer, territory, type, and date filters
   )
 })
 
-test('ticketsToCsv exports headers and escapes commas', () => {
+test('ticketsToCsv exports the customer care fields in the requested order', () => {
   const csv = ticketsToCsv([tickets[1]])
-  assert.match(csv, /^Ticket ID,Subject,Dealer,Status,Chat Type,Priority,Created On,Channel,Assigned To/m)
-  assert.match(csv, /"Khan, Associates"/)
-  assert.match(csv, /TKT-000320,Report not generating/)
+
+  assert.equal(csv, [
+    'Ticket Number,Dealer Code,Dealer Name,Region,Zone,Territory,Subject,Assigned To,Status,Creation Time and Date',
+    'TKT-000320,D00124,"Khan, Associates",South,South Zone,Karachi South,Report not generating,Maryam,Pending,"17 May 2025, 09:45 AM"',
+  ].join('\n'))
 })
 
 test('validateMessage trims a reply and rejects an empty message', () => {

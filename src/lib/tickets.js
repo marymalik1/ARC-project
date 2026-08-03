@@ -343,26 +343,28 @@ const csvCell = (value) => {
 
 export function ticketsToCsv(tickets) {
   const headings = [
-    'Ticket ID',
+    'Ticket Number',
+    'Dealer Code',
+    'Dealer Name',
+    'Region',
+    'Zone',
+    'Territory',
     'Subject',
-    'Dealer',
-    'Status',
-    'Chat Type',
-    'Priority',
-    'Created On',
-    'Channel',
     'Assigned To',
+    'Status',
+    'Creation Time and Date',
   ]
   const rows = tickets.map((ticket) => [
     ticket.id,
-    ticket.subject,
+    ticket.customer?.dealerCode,
     ticket.customer?.name,
-    ticket.status,
-    ticket.chatType,
-    ticket.priority,
-    ticket.createdOn,
-    ticket.channel,
+    ticket.region,
+    ticket.zone,
+    ticket.territory,
+    ticket.subject,
     ticket.assignedTo,
+    ticket.status,
+    ticket.createdOn,
   ])
 
   return [headings, ...rows]

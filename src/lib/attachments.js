@@ -43,7 +43,7 @@ export function formatBytes(bytes) {
 // the inbox serving arbitrary uploads back to a browser, and a broadcast file is
 // chosen by the sender. The size ceiling still applies: it is copied to every
 // recipient's chat.
-export const MAX_BROADCAST_BYTES = 10 * 1024 * 1024
+export const MAX_BROADCAST_BYTES = 50 * 1024 * 1024
 
 export function validateBroadcastFile(file) {
   if (!file || typeof file.size !== 'number') {

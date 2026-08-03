@@ -2,7 +2,12 @@
 
 import { CircleX, Megaphone, Paperclip, Send, Users, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { formatBytes, isImageAttachment, validateBroadcastFile } from '../lib/attachments'
+import {
+  formatBytes,
+  isImageAttachment,
+  MAX_BROADCAST_BYTES,
+  validateBroadcastFile,
+} from '../lib/attachments'
 import { broadcastSubmitState } from '../lib/broadcasts'
 
 /**
@@ -183,7 +188,7 @@ export default function BroadcastModal({ onClose, onSent }) {
               >
                 <Paperclip aria-hidden="true" />
                 <strong>Choose a file or image</strong>
-                <small>Any format. Up to 10 MB.</small>
+                <small>Any format. Up to {formatBytes(MAX_BROADCAST_BYTES)}.</small>
               </button>
             )}
 
