@@ -3,6 +3,7 @@
 import { CircleX, Megaphone, Paperclip, Send, Users, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { formatBytes, isImageAttachment, validateBroadcastFile } from '../lib/attachments'
+import { broadcastSubmitState } from '../lib/broadcasts'
 
 /**
  * Sends one file or image to every verified, active dealer.
@@ -109,6 +110,12 @@ export default function BroadcastModal({ onClose, onSent }) {
   const audience = recipients === null
     ? 'Counting dealers…'
     : `${recipients} verified, active ${recipients === 1 ? 'dealer' : 'dealers'}`
+  const submitState = broadcastSubmitState({
+    hasFile: Boolean(file),
+    sending,
+    recipients,
+    storage,
+  })
 
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
@@ -204,10 +211,10 @@ export default function BroadcastModal({ onClose, onSent }) {
               <button
                 className="button button--primary"
                 type="submit"
-                disabled={!file || sending || recipients === 0 || !storage}
+                disabled={submitState.disabled}
               >
                 <Send aria-hidden="true" />
-                {sending ? 'Sending…' : `Send to ${recipients ?? 0}`}
+                {submitState.label}
               </button>
             </div>
           </form>
